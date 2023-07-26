@@ -11,7 +11,7 @@ import (
 
 var urlStorage = map[string]string{}
 
-func HandleShortUrl(w http.ResponseWriter, r *http.Request) {
+func HandleShortURL(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		pathParts := strings.Split(r.URL.Path, "/")
 
@@ -21,14 +21,14 @@ func HandleShortUrl(w http.ResponseWriter, r *http.Request) {
 		}
 
 		id := pathParts[1]
-		originalUrl, ok := urlStorage[id]
+		originalURL, ok := urlStorage[id]
 
 		if !ok {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		w.Header().Set("Location", originalUrl)
+		w.Header().Set("Location", originalURL)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 
 		return
@@ -46,10 +46,11 @@ func HandleShortUrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortUrlId := util.Base62Encode(rand.Uint64())
+	id := util.Base62Encode(rand.Uint64())
 
-	urlStorage[shortUrlId] = string(body)
+	urlStorage[id] = string(body)
 
 	w.Header().Set("content-type", "text/plain")
-	io.WriteString(w, fmt.Sprintf("http://localhost:8080/%s", shortUrlId))
+	io.WriteString(w, fmt.Sprintf("http://localhost:8080/%s", id))
+	w.WriteHeader(http.StatusCreated)
 }

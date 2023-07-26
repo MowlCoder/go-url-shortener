@@ -7,7 +7,7 @@ import (
 
 func InitRouter() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", handlers.HandleShortUrl)
+	mux.HandleFunc("/", handlers.HandleShortURL)
 
 	return mux
 }
