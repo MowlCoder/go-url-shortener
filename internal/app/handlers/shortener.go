@@ -21,7 +21,7 @@ func HandleShortURL(w http.ResponseWriter, r *http.Request) {
 		}
 
 		id := pathParts[1]
-		originalURL, err := urlStorage.GetURLById(id)
+		originalURL, err := urlStorage.GetURLByID(id)
 
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)

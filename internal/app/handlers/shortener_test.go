@@ -36,9 +36,9 @@ func TestHandleShortURL(t *testing.T) {
 		respBody, err := io.ReadAll(res.Body)
 		require.NoError(t, err)
 
-		shortUrl := string(respBody)
+		shortURL := string(respBody)
 
-		r = httptest.NewRequest(http.MethodGet, shortUrl, nil)
+		r = httptest.NewRequest(http.MethodGet, shortURL, nil)
 		w = httptest.NewRecorder()
 
 		HandleShortURL(w, r)

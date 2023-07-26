@@ -20,7 +20,7 @@ func NewURLStorage() *URLStorage {
 	}
 }
 
-func (storage *URLStorage) GetURLById(id string) (string, error) {
+func (storage *URLStorage) GetURLByID(id string) (string, error) {
 	url, ok := storage.structure[id]
 
 	if !ok {
