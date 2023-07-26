@@ -12,7 +12,8 @@ import (
 var urlStorage = map[string]string{}
 
 func HandleShortURL(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
 		pathParts := strings.Split(r.URL.Path, "/")
 
 		if len(pathParts) != 2 {
@@ -30,27 +31,27 @@ func HandleShortURL(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Location", originalURL)
 		w.WriteHeader(http.StatusTemporaryRedirect)
+	case http.MethodPost:
+		body, err := io.ReadAll(r.Body)
 
-		return
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if len(body) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		id := util.Base62Encode(rand.Uint64())
+
+		urlStorage[id] = string(body)
+
+		w.Header().Set("content-type", "text/plain")
+		w.WriteHeader(http.StatusCreated)
+		io.WriteString(w, fmt.Sprintf("http://localhost:8080/%s", id))
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
-
-	body, err := io.ReadAll(r.Body)
-
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	if len(body) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	id := util.Base62Encode(rand.Uint64())
-
-	urlStorage[id] = string(body)
-
-	w.Header().Set("content-type", "text/plain")
-	w.WriteHeader(http.StatusCreated)
-	io.WriteString(w, fmt.Sprintf("http://localhost:8080/%s", id))
 }
