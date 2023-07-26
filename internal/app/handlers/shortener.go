@@ -2,14 +2,13 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/MowlCoder/go-url-shortener/internal/app/util"
+	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 	"io"
-	"math/rand"
 	"net/http"
 	"strings"
 )
 
-var urlStorage = map[string]string{}
+var urlStorage = storage.NewURLStorage()
 
 func HandleShortURL(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -22,9 +21,9 @@ func HandleShortURL(w http.ResponseWriter, r *http.Request) {
 		}
 
 		id := pathParts[1]
-		originalURL, ok := urlStorage[id]
+		originalURL, err := urlStorage.GetURLById(id)
 
-		if !ok {
+		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -44,9 +43,12 @@ func HandleShortURL(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		id := util.Base62Encode(rand.Uint64())
+		id, err := urlStorage.SaveURL(string(body))
 
-		urlStorage[id] = string(body)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
 		w.Header().Set("content-type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
