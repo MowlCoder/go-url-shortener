@@ -51,6 +51,6 @@ func HandleShortURL(w http.ResponseWriter, r *http.Request) {
 	urlStorage[id] = string(body)
 
 	w.Header().Set("content-type", "text/plain")
-	io.WriteString(w, fmt.Sprintf("http://localhost:8080/%s", id))
 	w.WriteHeader(http.StatusCreated)
+	io.WriteString(w, fmt.Sprintf("http://localhost:8080/%s", id))
 }
