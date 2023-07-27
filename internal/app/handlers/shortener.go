@@ -33,7 +33,7 @@ func ShortURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	io.WriteString(w, fmt.Sprintf("http://%s/%s", config.BaseConfig.BaseShortURLAddr, id))
+	io.WriteString(w, fmt.Sprintf("%s/%s", config.BaseConfig.BaseShortURLAddr, id))
 }
 
 func RedirectToURLByID(w http.ResponseWriter, r *http.Request) {
