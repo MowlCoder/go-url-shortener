@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"github.com/MowlCoder/go-url-shortener/internal/app/config"
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
 	"io"
@@ -32,7 +33,7 @@ func ShortURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	io.WriteString(w, fmt.Sprintf("http://localhost:8080/%s", id))
+	io.WriteString(w, fmt.Sprintf("http://%s/%s", config.BaseConfig.BaseShortURLAddr, id))
 }
 
 func RedirectToURLByID(w http.ResponseWriter, r *http.Request) {
