@@ -2,12 +2,14 @@ package routes
 
 import (
 	"github.com/MowlCoder/go-url-shortener/internal/app/handlers"
-	"net/http"
+	"github.com/go-chi/chi/v5"
 )
 
-func InitRouter() *http.ServeMux {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handlers.HandleShortURL)
+func InitRouter() *chi.Mux {
+	r := chi.NewRouter()
 
-	return mux
+	r.Post("/", handlers.ShortURL)
+	r.Get("/{id}", handlers.RedirectToURLByID)
+
+	return r
 }
