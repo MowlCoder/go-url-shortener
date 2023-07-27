@@ -19,8 +19,9 @@ func TestRouter(t *testing.T) {
 	t.Run("Create link", func(t *testing.T) {
 		response, err := http.Post(srv.URL, "text/plain", strings.NewReader("https://practicum.yandex.ru/"))
 
-		require.NoError(t, err)
+		defer response.Body.Close()
 
+		require.NoError(t, err)
 		assert.Equal(t, http.StatusCreated, response.StatusCode, fmt.Sprintf("Invalid status code. Expected 201, received %d", response.StatusCode))
 		assert.Equal(t, "text/plain", response.Header.Get("content-type"), fmt.Sprintf("Invalid content type. Expected text/plain, received %s", response.Header.Get("content-type")))
 	})
@@ -28,16 +29,18 @@ func TestRouter(t *testing.T) {
 	t.Run("Create link (invalid body)", func(t *testing.T) {
 		response, err := http.Post(srv.URL, "text/plain", nil)
 
-		require.NoError(t, err)
+		defer response.Body.Close()
 
+		require.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, response.StatusCode, fmt.Sprintf("Invalid status code. Expected 400, received %d", response.StatusCode))
 	})
 
 	t.Run("Get invalid link", func(t *testing.T) {
 		response, err := http.Get(srv.URL + "/invalid-link")
 
-		require.NoError(t, err)
+		defer response.Body.Close()
 
+		require.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, response.StatusCode, fmt.Sprintf("Invalid status code. Expected 400, received %d", response.StatusCode))
 	})
 
@@ -62,6 +65,8 @@ func TestRouter(t *testing.T) {
 		}
 
 		response, err = client.Get(srv.URL + "/" + shortURLParts[len(shortURLParts)-1])
+
+		defer response.Body.Close()
 
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusTemporaryRedirect, response.StatusCode, fmt.Sprintf("Invalid status code. Expected 307, received %d", response.StatusCode))
