@@ -1,16 +1,24 @@
 package config
 
-import "flag"
+import (
+	"flag"
+	"fmt"
+	"github.com/caarlos0/env/v9"
+)
 
 type AppConfig struct {
-	BaseHTTPAddr     string
-	BaseShortURLAddr string
+	BaseHTTPAddr     string `env:"SERVER_ADDRESS"`
+	BaseShortURLAddr string `env:"BASE_URL"`
 }
 
 func (appConfig *AppConfig) ParseFlags() {
 	flag.StringVar(&appConfig.BaseHTTPAddr, "a", "localhost:8080", "Base http address that server running on")
 	flag.StringVar(&appConfig.BaseShortURLAddr, "b", "http://localhost:8080", "Base short url address")
 	flag.Parse()
+
+	if err := env.Parse(appConfig); err != nil {
+		fmt.Printf("%+v\n", err)
+	}
 }
 
 var BaseConfig = new(AppConfig)
