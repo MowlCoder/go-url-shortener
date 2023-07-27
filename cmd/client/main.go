@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/MowlCoder/go-url-shortener/internal/app/config"
 	"io"
 	"net/http"
 	"os"
@@ -10,7 +11,9 @@ import (
 )
 
 func main() {
-	endpoint := "http://localhost:8080/"
+	config.BaseConfig.ParseFlags()
+
+	endpoint := "http://" + config.BaseConfig.BaseHTTPAddr
 
 	fmt.Print("Введите длинный URL: ")
 	reader := bufio.NewReader(os.Stdin)
