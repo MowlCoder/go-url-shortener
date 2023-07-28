@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/MowlCoder/go-url-shortener/internal/app/config"
 	"github.com/MowlCoder/go-url-shortener/internal/app/routes"
-	"net/http"
 )
 
 func main() {

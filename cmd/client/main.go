@@ -3,11 +3,12 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/MowlCoder/go-url-shortener/internal/app/config"
 	"io"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/MowlCoder/go-url-shortener/internal/app/config"
 )
 
 func main() {

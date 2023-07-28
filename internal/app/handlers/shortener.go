@@ -2,11 +2,12 @@ package handlers
 
 import (
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/MowlCoder/go-url-shortener/internal/app/config"
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
-	"io"
-	"net/http"
 )
 
 var urlStorage = storage.NewURLStorage()

@@ -3,6 +3,7 @@ package config
 import (
 	"flag"
 	"fmt"
+
 	"github.com/caarlos0/env/v9"
 )
 

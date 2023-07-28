@@ -2,8 +2,9 @@ package storage
 
 import (
 	"errors"
-	"github.com/MowlCoder/go-url-shortener/internal/app/util"
 	"math/rand"
+
+	"github.com/MowlCoder/go-url-shortener/internal/app/util"
 )
 
 type URLStorage struct {
