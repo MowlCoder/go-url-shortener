@@ -2,14 +2,15 @@ package handlers
 
 import (
 	"context"
-	"github.com/go-chi/chi/v5"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestShortURL(t *testing.T) {
@@ -124,11 +125,3 @@ func TestRedirectToURLByID(t *testing.T) {
 		})
 	}
 }
-
-//{
-//name:          "Get original url (invalid)",
-//preCreateLink: false,
-//want: want{
-//code: 400,
-//},
-//},
