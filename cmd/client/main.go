@@ -12,9 +12,10 @@ import (
 )
 
 func main() {
-	config.BaseConfig.ParseFlags()
+	appConfig := &config.AppConfig{}
+	appConfig.ParseFlags()
 
-	endpoint := "http://" + config.BaseConfig.BaseHTTPAddr
+	endpoint := "http://" + appConfig.BaseHTTPAddr
 
 	fmt.Print("Введите длинный URL: ")
 	reader := bufio.NewReader(os.Stdin)

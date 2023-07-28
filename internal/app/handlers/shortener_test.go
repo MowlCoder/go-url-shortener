@@ -8,12 +8,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MowlCoder/go-url-shortener/internal/app/config"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestShortURL(t *testing.T) {
+	appConfig := &config.AppConfig{}
+	handler := NewShortenerHandler(appConfig)
+
 	type want struct {
 		code        int
 		contentType string
@@ -47,7 +52,7 @@ func TestShortURL(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, "/", test.body)
 			w := httptest.NewRecorder()
 
-			ShortURL(w, request)
+			handler.ShortURL(w, request)
 
 			res := w.Result()
 
@@ -60,6 +65,9 @@ func TestShortURL(t *testing.T) {
 }
 
 func TestRedirectToURLByID(t *testing.T) {
+	appConfig := &config.AppConfig{}
+	handler := NewShortenerHandler(appConfig)
+
 	type want struct {
 		code int
 	}
@@ -92,7 +100,7 @@ func TestRedirectToURLByID(t *testing.T) {
 			if test.preCreateLink {
 				request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://practicum.yandex.ru"))
 				w := httptest.NewRecorder()
-				ShortURL(w, request)
+				handler.ShortURL(w, request)
 
 				res := w.Result()
 
@@ -116,7 +124,7 @@ func TestRedirectToURLByID(t *testing.T) {
 
 			request = request.WithContext(context.WithValue(request.Context(), chi.RouteCtxKey, rctx))
 
-			RedirectToURLByID(w, request)
+			handler.RedirectToURLByID(w, request)
 
 			res := w.Result()
 

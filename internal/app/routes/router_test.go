@@ -8,12 +8,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MowlCoder/go-url-shortener/internal/app/config"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRouter(t *testing.T) {
-	r := InitRouter()
+	appConfig := &config.AppConfig{}
+	r := InitRouter(appConfig)
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 

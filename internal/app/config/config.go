@@ -21,5 +21,3 @@ func (appConfig *AppConfig) ParseFlags() {
 		fmt.Printf("%+v\n", err)
 	}
 }
-
-var BaseConfig = &AppConfig{}

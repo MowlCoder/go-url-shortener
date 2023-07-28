@@ -9,12 +9,13 @@ import (
 )
 
 func main() {
-	config.BaseConfig.ParseFlags()
+	appConfig := &config.AppConfig{}
+	appConfig.ParseFlags()
 
-	mux := routes.InitRouter()
+	mux := routes.InitRouter(appConfig)
 
-	fmt.Println("URL Shortener server is running on", config.BaseConfig.BaseHTTPAddr)
-	if err := http.ListenAndServe(config.BaseConfig.BaseHTTPAddr, mux); err != nil {
+	fmt.Println("URL Shortener server is running on", appConfig.BaseHTTPAddr)
+	if err := http.ListenAndServe(appConfig.BaseHTTPAddr, mux); err != nil {
 		panic(err)
 	}
 }

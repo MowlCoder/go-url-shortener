@@ -10,9 +10,19 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-var urlStorage = storage.NewURLStorage()
+type ShortenerHandler struct {
+	config     *config.AppConfig
+	urlStorage *storage.URLStorage
+}
 
-func ShortURL(w http.ResponseWriter, r *http.Request) {
+func NewShortenerHandler(config *config.AppConfig) *ShortenerHandler {
+	return &ShortenerHandler{
+		config:     config,
+		urlStorage: storage.NewURLStorage(),
+	}
+}
+
+func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -25,7 +35,7 @@ func ShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := urlStorage.SaveURL(string(body))
+	id, err := h.urlStorage.SaveURL(string(body))
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -34,12 +44,12 @@ func ShortURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	io.WriteString(w, fmt.Sprintf("%s/%s", config.BaseConfig.BaseShortURLAddr, id))
+	io.WriteString(w, fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, id))
 }
 
-func RedirectToURLByID(w http.ResponseWriter, r *http.Request) {
+func (h *ShortenerHandler) RedirectToURLByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	originalURL, err := urlStorage.GetURLByID(id)
+	originalURL, err := h.urlStorage.GetURLByID(id)
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
