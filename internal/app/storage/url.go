@@ -22,13 +22,11 @@ func NewURLStorage() *URLStorage {
 }
 
 func (storage *URLStorage) GetURLByID(id string) (string, error) {
-	url, ok := storage.structure[id]
-
-	if !ok {
-		return "", errorURLNotFound
+	if url, ok := storage.structure[id]; ok {
+		return url, nil
 	}
 
-	return url, nil
+	return "", errorURLNotFound
 }
 
 func (storage *URLStorage) SaveURL(url string) (string, error) {
