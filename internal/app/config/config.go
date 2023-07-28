@@ -22,4 +22,4 @@ func (appConfig *AppConfig) ParseFlags() {
 	}
 }
 
-var BaseConfig = new(AppConfig)
+var BaseConfig = &AppConfig{}
