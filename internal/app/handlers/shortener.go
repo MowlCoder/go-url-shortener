@@ -2,9 +2,10 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/config"
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
