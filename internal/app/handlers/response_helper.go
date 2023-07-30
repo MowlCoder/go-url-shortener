@@ -35,6 +35,11 @@ func SendJSONResponse(w http.ResponseWriter, code int, data interface{}) error {
 	return nil
 }
 
+func SendRedirectResponse(w http.ResponseWriter, location string) {
+	w.Header().Set("Location", location)
+	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
 func SendStatusCode(w http.ResponseWriter, code int) {
 	w.WriteHeader(code)
 }

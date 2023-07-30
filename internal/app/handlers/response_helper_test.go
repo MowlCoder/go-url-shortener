@@ -82,3 +82,17 @@ func TestSendJSONResponse(t *testing.T) {
 		assert.JSONEq(t, string(jsonData), string(body))
 	})
 }
+
+func TestSendRedirectResponse(t *testing.T) {
+	t.Run("Send redirect response", func(t *testing.T) {
+		url := "https://practicum.yandex.ru"
+		w := httptest.NewRecorder()
+		SendRedirectResponse(w, url)
+
+		res := w.Result()
+		require.Equal(t, http.StatusTemporaryRedirect, res.StatusCode)
+		defer res.Body.Close()
+
+		assert.Equal(t, url, res.Header.Get("Location"))
+	})
+}

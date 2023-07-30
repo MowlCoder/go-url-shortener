@@ -55,6 +55,5 @@ func (h *ShortenerHandler) RedirectToURLByID(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	w.Header().Set("Location", originalURL)
-	SendStatusCode(w, http.StatusTemporaryRedirect)
+	SendRedirectResponse(w, originalURL)
 }
