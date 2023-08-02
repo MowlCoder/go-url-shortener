@@ -17,7 +17,7 @@ var (
 
 func NewURLStorage() *URLStorage {
 	return &URLStorage{
-		structure: map[string]string{},
+		structure: make(map[string]string),
 	}
 }
 
