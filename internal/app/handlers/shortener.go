@@ -8,18 +8,25 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/config"
-	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 )
+
+type URLStorage interface {
+	SaveURL(url string) (string, error)
+	GetURLByID(id string) (string, error)
+}
 
 type ShortenerHandler struct {
 	config     *config.AppConfig
-	urlStorage *storage.URLStorage
+	urlStorage URLStorage
 }
 
-func NewShortenerHandler(config *config.AppConfig) *ShortenerHandler {
+func NewShortenerHandler(
+	config *config.AppConfig,
+	urlStorage URLStorage,
+) *ShortenerHandler {
 	return &ShortenerHandler{
 		config:     config,
-		urlStorage: storage.NewURLStorage(),
+		urlStorage: urlStorage,
 	}
 }
 

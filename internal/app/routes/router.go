@@ -3,6 +3,7 @@ package routes
 import (
 	"github.com/MowlCoder/go-url-shortener/internal/app/config"
 	"github.com/MowlCoder/go-url-shortener/internal/app/handlers"
+	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -14,7 +15,9 @@ func InitRouter(config *config.AppConfig) *chi.Mux {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	shortenerHandler := handlers.NewShortenerHandler(config)
+	urlStorage := storage.NewURLStorage()
+
+	shortenerHandler := handlers.NewShortenerHandler(config, urlStorage)
 
 	r.Post("/", shortenerHandler.ShortURL)
 	r.Get("/{id}", shortenerHandler.RedirectToURLByID)

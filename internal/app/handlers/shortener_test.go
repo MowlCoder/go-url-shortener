@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -17,7 +18,9 @@ import (
 
 func TestShortURL(t *testing.T) {
 	appConfig := &config.AppConfig{}
-	handler := NewShortenerHandler(appConfig)
+	urlStorage := storage.NewURLStorage()
+
+	handler := NewShortenerHandler(appConfig, urlStorage)
 
 	type want struct {
 		code        int
@@ -66,7 +69,8 @@ func TestShortURL(t *testing.T) {
 
 func TestRedirectToURLByID(t *testing.T) {
 	appConfig := &config.AppConfig{}
-	handler := NewShortenerHandler(appConfig)
+	urlStorage := storage.NewURLStorage()
+	handler := NewShortenerHandler(appConfig, urlStorage)
 
 	type want struct {
 		code int
