@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"context"
-	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/config"
 
