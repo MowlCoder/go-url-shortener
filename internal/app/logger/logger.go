@@ -39,7 +39,7 @@ func NewLogger(options Options) (*Logger, error) {
 	}
 
 	return &Logger{
-		zapLogger: zl,
+		zapLogger: zl.WithOptions(zap.AddCallerSkip(1)),
 	}, nil
 }
 
