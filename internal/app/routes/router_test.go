@@ -2,6 +2,7 @@ package routes
 
 import (
 	"fmt"
+	"github.com/MowlCoder/go-url-shortener/internal/app/logger"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,7 +17,12 @@ import (
 
 func TestRouter(t *testing.T) {
 	appConfig := &config.AppConfig{}
-	r := InitRouter(appConfig)
+	l, _ := logger.NewLogger(logger.Options{
+		Level:        logger.LogInfo,
+		IsProduction: false,
+	})
+
+	r := InitRouter(appConfig, l)
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 
