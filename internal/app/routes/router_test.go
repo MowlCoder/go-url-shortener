@@ -2,12 +2,13 @@ package routes
 
 import (
 	"fmt"
-	"github.com/MowlCoder/go-url-shortener/internal/app/logger"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/MowlCoder/go-url-shortener/internal/app/logger"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/config"
 
@@ -35,6 +36,17 @@ func TestRouter(t *testing.T) {
 
 		assert.Equal(t, http.StatusCreated, response.StatusCode, fmt.Sprintf("Invalid status code. Expected 201, received %d", response.StatusCode))
 		assert.Equal(t, "text/plain", response.Header.Get("content-type"), fmt.Sprintf("Invalid content type. Expected text/plain, received %s", response.Header.Get("content-type")))
+	})
+
+	t.Run("Create link (json)", func(t *testing.T) {
+		response, err := http.Post(srv.URL+"/api/shorten", "application/json", strings.NewReader(`{"url": "https://practicum.yandex.ru/"}`))
+
+		require.NoError(t, err)
+
+		defer response.Body.Close()
+
+		assert.Equal(t, http.StatusCreated, response.StatusCode, fmt.Sprintf("Invalid status code. Expected 201, received %d", response.StatusCode))
+		assert.Equal(t, "application/json", response.Header.Get("content-type"), fmt.Sprintf("Invalid content type. Expected application/json, received %s", response.Header.Get("content-type")))
 	})
 
 	t.Run("Create link (invalid body)", func(t *testing.T) {

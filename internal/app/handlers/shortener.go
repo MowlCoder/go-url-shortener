@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -28,6 +29,45 @@ func NewShortenerHandler(
 		config:     config,
 		urlStorage: urlStorage,
 	}
+}
+
+func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) {
+	type body struct {
+		URL string `json:"url"`
+	}
+
+	type response struct {
+		Result string `json:"result"`
+	}
+
+	requestBody := body{}
+	rawBody, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		SendStatusCode(w, http.StatusBadRequest)
+		return
+	}
+
+	if err := json.Unmarshal(rawBody, &requestBody); err != nil {
+		SendStatusCode(w, http.StatusBadRequest)
+		return
+	}
+
+	if requestBody.URL == "" {
+		SendStatusCode(w, http.StatusBadRequest)
+		return
+	}
+
+	id, err := h.urlStorage.SaveURL(requestBody.URL)
+
+	if err != nil {
+		SendStatusCode(w, http.StatusBadRequest)
+		return
+	}
+
+	SendJSONResponse(w, http.StatusCreated, response{
+		Result: fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, id),
+	})
 }
 
 func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {

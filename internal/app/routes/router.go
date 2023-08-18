@@ -28,6 +28,7 @@ func InitRouter(config *config.AppConfig, logger Logger) *chi.Mux {
 
 	shortenerHandler := handlers.NewShortenerHandler(config, urlStorage)
 
+	r.Post("/api/shorten", shortenerHandler.ShortURLJSON)
 	r.Post("/", shortenerHandler.ShortURL)
 	r.Get("/{id}", shortenerHandler.RedirectToURLByID)
 

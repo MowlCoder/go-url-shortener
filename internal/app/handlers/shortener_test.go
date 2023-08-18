@@ -68,6 +68,58 @@ func TestShortURL(t *testing.T) {
 	}
 }
 
+func TestShortURLJSON(t *testing.T) {
+	appConfig := &config.AppConfig{}
+	urlStorage := storage.NewURLStorage()
+
+	handler := NewShortenerHandler(appConfig, urlStorage)
+
+	type want struct {
+		code        int
+		contentType string
+	}
+
+	tests := []struct {
+		name string
+		body io.Reader
+		want want
+	}{
+		{
+			name: "Create short link (valid)",
+			body: strings.NewReader(`{"url": "https://vk.com"}`),
+			want: want{
+				code:        201,
+				contentType: "application/json",
+			},
+		},
+		{
+			name: "Create short link (invalid)",
+			body: strings.NewReader(`{"url": ""}`),
+			want: want{
+				code:        400,
+				contentType: "",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/api/shorten", test.body)
+			request.Header.Set("content-type", "application/json")
+			w := httptest.NewRecorder()
+
+			handler.ShortURLJSON(w, request)
+
+			res := w.Result()
+
+			assert.Equal(t, test.want.code, res.StatusCode)
+			defer res.Body.Close()
+
+			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
+		})
+	}
+}
+
 func TestRedirectToURLByID(t *testing.T) {
 	appConfig := &config.AppConfig{}
 	urlStorage := storage.NewURLStorage()
