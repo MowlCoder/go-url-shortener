@@ -20,6 +20,7 @@ func InitRouter(config *config.AppConfig, logger Logger) *chi.Mux {
 
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
+	r.Use(middlewares.GzipCompress)
 	r.Use(func(handler http.Handler) http.Handler {
 		return middlewares.WithLogging(handler, logger)
 	})
