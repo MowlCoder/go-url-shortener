@@ -27,10 +27,6 @@ func (cw *compressWriter) WriteHeader(code int) {
 }
 
 func (cw *compressWriter) Write(b []byte) (int, error) {
-	if !cw.isCompressible() {
-		return cw.ResponseWriter.Write(b)
-	}
-
 	return cw.writer().Write(b)
 }
 
