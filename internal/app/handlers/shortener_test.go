@@ -1,12 +1,16 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/MowlCoder/go-url-shortener/internal/app/handlers/dtos"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 
@@ -81,12 +85,14 @@ func TestShortURLJSON(t *testing.T) {
 
 	tests := []struct {
 		name string
-		body io.Reader
+		body dtos.ShortURLDto
 		want want
 	}{
 		{
 			name: "Create short link (valid)",
-			body: strings.NewReader(`{"url": "https://vk.com"}`),
+			body: dtos.ShortURLDto{
+				URL: "https://vk.com",
+			},
 			want: want{
 				code:        201,
 				contentType: "application/json",
@@ -94,7 +100,9 @@ func TestShortURLJSON(t *testing.T) {
 		},
 		{
 			name: "Create short link (invalid)",
-			body: strings.NewReader(`{"url": ""}`),
+			body: dtos.ShortURLDto{
+				URL: "",
+			},
 			want: want{
 				code:        400,
 				contentType: "",
@@ -104,7 +112,11 @@ func TestShortURLJSON(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, "/api/shorten", test.body)
+			jsonBody, err := json.Marshal(test.body)
+
+			require.NoError(t, err)
+
+			request := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewReader(jsonBody))
 			request.Header.Set("content-type", "application/json")
 			w := httptest.NewRecorder()
 

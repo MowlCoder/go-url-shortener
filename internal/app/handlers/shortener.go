@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/MowlCoder/go-url-shortener/internal/app/handlers/dtos"
+
 	"github.com/go-chi/chi/v5"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/config"
@@ -32,15 +34,7 @@ func NewShortenerHandler(
 }
 
 func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) {
-	type body struct {
-		URL string `json:"url"`
-	}
-
-	type response struct {
-		Result string `json:"result"`
-	}
-
-	requestBody := body{}
+	requestBody := dtos.ShortURLDto{}
 	rawBody, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -65,7 +59,7 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	SendJSONResponse(w, http.StatusCreated, response{
+	SendJSONResponse(w, http.StatusCreated, dtos.ShortURLResponse{
 		Result: fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, id),
 	})
 }
