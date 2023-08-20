@@ -15,7 +15,7 @@ import (
 
 type URLStorage interface {
 	SaveURL(url string) (string, error)
-	GetURLByID(id string) (string, error)
+	GetOriginalURLByShortURL(shortURL string) (string, error)
 }
 
 type ShortenerHandler struct {
@@ -89,7 +89,7 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 
 func (h *ShortenerHandler) RedirectToURLByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	originalURL, err := h.urlStorage.GetURLByID(id)
+	originalURL, err := h.urlStorage.GetOriginalURLByShortURL(id)
 
 	if err != nil {
 		SendStatusCode(w, http.StatusBadRequest)
