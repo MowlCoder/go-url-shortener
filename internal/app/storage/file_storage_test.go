@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestURLStorage_SaveURL(t *testing.T) {
+func TestFileStorage_SaveURL(t *testing.T) {
 	t.Run("Save url", func(t *testing.T) {
 		urlToAdd := "https://test.com"
-		storage := NewURLStorage("")
+		storage := NewFileStorage("")
 		id, err := storage.SaveURL(urlToAdd)
 
 		if assert.NoError(t, err) {
@@ -22,11 +22,11 @@ func TestURLStorage_SaveURL(t *testing.T) {
 	})
 }
 
-func TestURLStorage_GetURLByID(t *testing.T) {
+func TestFileStorage_GetOriginalURLByShortURL(t *testing.T) {
 	t.Run("Get url", func(t *testing.T) {
 		testID := "testid"
 		testURL := "https://test.com"
-		storage := NewURLStorage("")
+		storage := NewFileStorage("")
 		storage.structure[testID] = models.ShortenedURL{
 			ShortURL:    testID,
 			OriginalURL: testURL,
@@ -41,7 +41,7 @@ func TestURLStorage_GetURLByID(t *testing.T) {
 
 	t.Run("Get not existing url", func(t *testing.T) {
 		testID := "testid"
-		storage := NewURLStorage("")
+		storage := NewFileStorage("")
 
 		_, err := storage.GetOriginalURLByShortURL(testID)
 

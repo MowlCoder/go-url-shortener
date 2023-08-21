@@ -2,7 +2,6 @@ package storage
 
 import (
 	"encoding/json"
-	"errors"
 	"math/rand"
 	"os"
 
@@ -11,18 +10,14 @@ import (
 	"github.com/MowlCoder/go-url-shortener/internal/app/util"
 )
 
-type URLStorage struct {
+type FileStorage struct {
 	structure     map[string]models.ShortenedURL
 	file          *os.File
 	savingChanges bool
 }
 
-var (
-	errorURLNotFound = errors.New("url not found")
-)
-
-func NewURLStorage(fileStoragePath string) *URLStorage {
-	storage := URLStorage{
+func NewFileStorage(fileStoragePath string) *FileStorage {
+	storage := FileStorage{
 		structure:     make(map[string]models.ShortenedURL),
 		savingChanges: false,
 	}
@@ -41,7 +36,7 @@ func NewURLStorage(fileStoragePath string) *URLStorage {
 	return &storage
 }
 
-func (storage *URLStorage) GetOriginalURLByShortURL(shortURL string) (string, error) {
+func (storage *FileStorage) GetOriginalURLByShortURL(shortURL string) (string, error) {
 	if url, ok := storage.structure[shortURL]; ok {
 		return url.OriginalURL, nil
 	}
@@ -49,7 +44,7 @@ func (storage *URLStorage) GetOriginalURLByShortURL(shortURL string) (string, er
 	return "", errorURLNotFound
 }
 
-func (storage *URLStorage) SaveURL(url string) (string, error) {
+func (storage *FileStorage) SaveURL(url string) (string, error) {
 	shortURL := util.Base62Encode(rand.Uint64())
 	storage.structure[shortURL] = models.ShortenedURL{
 		ID:          len(storage.structure) + 1,
@@ -64,7 +59,7 @@ func (storage *URLStorage) SaveURL(url string) (string, error) {
 	return shortURL, nil
 }
 
-func (storage *URLStorage) parseFromFile() error {
+func (storage *FileStorage) parseFromFile() error {
 	b, err := os.ReadFile(storage.file.Name())
 
 	if err != nil {
@@ -78,7 +73,7 @@ func (storage *URLStorage) parseFromFile() error {
 	return nil
 }
 
-func (storage *URLStorage) saveToFile() error {
+func (storage *FileStorage) saveToFile() error {
 	b, err := json.Marshal(&storage.structure)
 
 	if err != nil {

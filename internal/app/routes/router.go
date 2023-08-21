@@ -25,7 +25,7 @@ func InitRouter(config *config.AppConfig, logger Logger) *chi.Mux {
 		return middlewares.WithLogging(handler, logger)
 	})
 
-	urlStorage := storage.NewURLStorage(config.FileStoragePath)
+	urlStorage := storage.NewFileStorage(config.FileStoragePath)
 
 	shortenerHandler := handlers.NewShortenerHandler(config, urlStorage)
 
