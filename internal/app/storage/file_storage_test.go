@@ -11,7 +11,7 @@ import (
 func TestFileStorage_SaveURL(t *testing.T) {
 	t.Run("Save url", func(t *testing.T) {
 		urlToAdd := "https://test.com"
-		storage := NewFileStorage("")
+		storage := NewFileStorage("/tmp/go-url-shortener-test.json")
 		id, err := storage.SaveURL(urlToAdd)
 
 		if assert.NoError(t, err) {
@@ -26,7 +26,7 @@ func TestFileStorage_GetOriginalURLByShortURL(t *testing.T) {
 	t.Run("Get url", func(t *testing.T) {
 		testID := "testid"
 		testURL := "https://test.com"
-		storage := NewFileStorage("")
+		storage := NewFileStorage("/tmp/go-url-shortener-test.json")
 		storage.structure[testID] = models.ShortenedURL{
 			ShortURL:    testID,
 			OriginalURL: testURL,
@@ -41,7 +41,7 @@ func TestFileStorage_GetOriginalURLByShortURL(t *testing.T) {
 
 	t.Run("Get not existing url", func(t *testing.T) {
 		testID := "testid"
-		storage := NewFileStorage("")
+		storage := NewFileStorage("/tmp/go-url-shortener-test.json")
 
 		_, err := storage.GetOriginalURLByShortURL(testID)
 
