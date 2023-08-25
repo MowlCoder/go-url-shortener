@@ -1,12 +1,18 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/MowlCoder/go-url-shortener/internal/app/handlers/dtos"
+
+	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/config"
 
@@ -17,7 +23,9 @@ import (
 
 func TestShortURL(t *testing.T) {
 	appConfig := &config.AppConfig{}
-	handler := NewShortenerHandler(appConfig)
+	urlStorage := storage.NewInMemoryStorage()
+
+	handler := NewShortenerHandler(appConfig, urlStorage)
 
 	type want struct {
 		code        int
@@ -64,9 +72,70 @@ func TestShortURL(t *testing.T) {
 	}
 }
 
+func TestShortURLJSON(t *testing.T) {
+	appConfig := &config.AppConfig{}
+	urlStorage := storage.NewInMemoryStorage()
+
+	handler := NewShortenerHandler(appConfig, urlStorage)
+
+	type want struct {
+		code        int
+		contentType string
+	}
+
+	tests := []struct {
+		name string
+		body dtos.ShortURLDto
+		want want
+	}{
+		{
+			name: "Create short link (valid)",
+			body: dtos.ShortURLDto{
+				URL: "https://vk.com",
+			},
+			want: want{
+				code:        201,
+				contentType: "application/json",
+			},
+		},
+		{
+			name: "Create short link (invalid)",
+			body: dtos.ShortURLDto{
+				URL: "",
+			},
+			want: want{
+				code:        400,
+				contentType: "",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			jsonBody, err := json.Marshal(test.body)
+
+			require.NoError(t, err)
+
+			request := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewReader(jsonBody))
+			request.Header.Set("content-type", "application/json")
+			w := httptest.NewRecorder()
+
+			handler.ShortURLJSON(w, request)
+
+			res := w.Result()
+
+			assert.Equal(t, test.want.code, res.StatusCode)
+			defer res.Body.Close()
+
+			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
+		})
+	}
+}
+
 func TestRedirectToURLByID(t *testing.T) {
 	appConfig := &config.AppConfig{}
-	handler := NewShortenerHandler(appConfig)
+	urlStorage := storage.NewInMemoryStorage()
+	handler := NewShortenerHandler(appConfig, urlStorage)
 
 	type want struct {
 		code int
