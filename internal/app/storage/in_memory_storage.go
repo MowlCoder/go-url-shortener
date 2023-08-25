@@ -1,8 +1,9 @@
 package storage
 
 import (
-	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
 	"math/rand"
+
+	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/util"
 )

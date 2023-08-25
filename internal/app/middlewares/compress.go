@@ -73,7 +73,23 @@ func newGzipWriter(rw http.ResponseWriter, w io.Writer) *compressWriter {
 	}
 }
 
-func GzipCompress(next http.Handler) http.Handler {
+type writerResetter interface {
+	io.Writer
+	Reset(w io.Writer)
+}
+
+type compressMiddleware struct {
+	wr writerResetter
+}
+
+func NewCompressMiddleware(writerResetter writerResetter) *compressMiddleware {
+	compressor := compressMiddleware{}
+	compressor.wr = writerResetter
+
+	return &compressor
+}
+
+func (compressor compressMiddleware) Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Encoding") == "gzip" {
 			gr, err := gzip.NewReader(r.Body)
@@ -93,14 +109,8 @@ func GzipCompress(next http.Handler) http.Handler {
 			return
 		}
 
-		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		gzipWriter := newGzipWriter(w, gz)
+		compressor.wr.Reset(w)
+		gzipWriter := newGzipWriter(w, compressor.wr)
 
 		defer gzipWriter.Close()
 
