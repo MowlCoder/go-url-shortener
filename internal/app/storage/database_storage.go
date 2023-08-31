@@ -27,7 +27,7 @@ func NewDatabaseStorage(databaseDNS string) (*DatabaseStorage, error) {
 		db: db,
 	}
 
-	if err := dbStorage.createTables(); err != nil {
+	if err := dbStorage.bootstrap(); err != nil {
 		return nil, err
 	}
 
@@ -62,13 +62,24 @@ func (storage *DatabaseStorage) Ping() error {
 	return storage.db.Ping()
 }
 
-func (storage *DatabaseStorage) createTables() error {
-	_, err := storage.db.Exec(`CREATE TABLE IF NOT EXISTS shorten_url (
-	  id serial PRIMARY KEY,
-	  short_url VARCHAR ( 20 ) UNIQUE NOT NULL,
-	  original_url TEXT NOT NULL,
-	  created_at TIMESTAMP NOT NULL
-	);`)
+func (storage *DatabaseStorage) bootstrap() error {
+	tx, err := storage.db.Begin()
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback()
+
+	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS shorten_url (
+	  		id serial PRIMARY KEY,
+	  		short_url VARCHAR ( 20 ) UNIQUE NOT NULL,
+	  		original_url TEXT NOT NULL,
+	  		created_at TIMESTAMP NOT NULL
+		)
+	`)
+	tx.Exec(`CREATE UNIQUE INDEX short_url_idx ON shorten_url (short_url)`)
+
+	return tx.Commit()
 }
