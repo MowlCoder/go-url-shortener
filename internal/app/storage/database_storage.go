@@ -79,7 +79,7 @@ func (storage *DatabaseStorage) bootstrap() error {
 	  		created_at TIMESTAMP NOT NULL
 		)
 	`)
-	tx.Exec(`CREATE UNIQUE INDEX short_url_idx ON shorten_url (short_url)`)
+	tx.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS short_url_idx ON shorten_url (short_url)`)
 
 	return tx.Commit()
 }
