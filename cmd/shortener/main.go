@@ -2,7 +2,6 @@ package main
 
 import (
 	"compress/gzip"
-	"database/sql"
 	"fmt"
 	"net/http"
 
@@ -39,11 +38,18 @@ func main() {
 		panic(err)
 	}
 
-	urlStorage := storage.NewFileStorage(appConfig.FileStoragePath)
-	db, err := sql.Open("pgx", appConfig.DatabaseDSN)
+	var urlStorage handlers.URLStorage
 
-	if err != nil {
-		panic(err)
+	if appConfig.DatabaseDSN != "" {
+		urlStorage, err = storage.NewDatabaseStorage(appConfig.DatabaseDSN)
+
+		if err != nil {
+			panic(err)
+		}
+	} else if appConfig.FileStoragePath != "" {
+		urlStorage = storage.NewFileStorage(appConfig.FileStoragePath)
+	} else {
+		urlStorage = storage.NewInMemoryStorage()
 	}
 
 	shortenerHandler := handlers.NewShortenerHandler(appConfig, urlStorage)
@@ -59,16 +65,7 @@ func main() {
 
 	mux.Post("/api/shorten", shortenerHandler.ShortURLJSON)
 	mux.Post("/", shortenerHandler.ShortURL)
-	mux.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
-		err := db.Ping()
-
-		if err != nil {
-			handlers.SendStatusCode(w, http.StatusInternalServerError)
-			return
-		}
-
-		handlers.SendStatusCode(w, http.StatusOK)
-	})
+	mux.Get("/ping", shortenerHandler.Ping)
 	mux.Get("/{id}", shortenerHandler.RedirectToURLByID)
 
 	fmt.Println("URL Shortener server is running on", appConfig.BaseHTTPAddr)

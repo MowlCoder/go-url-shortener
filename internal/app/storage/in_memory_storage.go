@@ -38,3 +38,7 @@ func (storage *InMemoryStorage) SaveURL(url string) (string, error) {
 
 	return shortURL, nil
 }
+
+func (storage *InMemoryStorage) Ping() error {
+	return nil
+}

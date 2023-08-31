@@ -16,6 +16,7 @@ import (
 type URLStorage interface {
 	SaveURL(url string) (string, error)
 	GetOriginalURLByShortURL(shortURL string) (string, error)
+	Ping() error
 }
 
 type ShortenerHandler struct {
@@ -97,4 +98,13 @@ func (h *ShortenerHandler) RedirectToURLByID(w http.ResponseWriter, r *http.Requ
 	}
 
 	SendRedirectResponse(w, originalURL)
+}
+
+func (h *ShortenerHandler) Ping(w http.ResponseWriter, r *http.Request) {
+	if err := h.urlStorage.Ping(); err != nil {
+		SendStatusCode(w, http.StatusInternalServerError)
+		return
+	}
+
+	SendStatusCode(w, http.StatusOK)
 }

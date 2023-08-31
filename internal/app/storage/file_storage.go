@@ -59,6 +59,10 @@ func (storage *FileStorage) SaveURL(url string) (string, error) {
 	return shortURL, nil
 }
 
+func (storage *FileStorage) Ping() error {
+	return nil
+}
+
 func (storage *FileStorage) parseFromFile() error {
 	b, err := os.ReadFile(storage.file.Name())
 
