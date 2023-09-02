@@ -142,6 +142,7 @@ func (storage *DatabaseStorage) generateUniqueShortSlug() string {
 	fmt.Println("old", shortURL)
 
 	if original, _ := storage.GetOriginalURLByShortURL(context.Background(), shortURL); original != "" {
+		fmt.Println(original)
 		shortURL = util.Base62Encode(rand.Uint64())
 		fmt.Println("new", shortURL)
 	}
