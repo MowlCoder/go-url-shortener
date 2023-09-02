@@ -109,7 +109,7 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 	shortenedURLs, storageErr := h.urlStorage.SaveSeveralURL(r.Context(), urls)
 
 	if storageErr != nil && !errors.Is(storageErr, storage.ErrRowConflict) {
-		fmt.Println(err)
+		fmt.Println(storageErr)
 
 		SendStatusCode(w, http.StatusInternalServerError)
 		return

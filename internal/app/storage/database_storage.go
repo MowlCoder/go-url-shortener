@@ -50,7 +50,7 @@ func (storage *DatabaseStorage) GetOriginalURLByShortURL(ctx context.Context, sh
 }
 
 func (storage *DatabaseStorage) SaveURL(ctx context.Context, url string) (models.ShortenedURL, error) {
-	shortURL := util.Base62Encode(rand.Uint64() - rand.Uint64() + rand.Uint64())
+	shortURL := storage.generateUniqueShortSlug()
 
 	row := storage.db.QueryRowContext(
 		ctx,
@@ -92,7 +92,7 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, urls []strin
 	isResultWithConflict := false
 
 	for _, url := range urls {
-		shortURL := util.Base62Encode(rand.Uint64() - rand.Uint64() + rand.Uint64())
+		shortURL := storage.generateUniqueShortSlug()
 		row := tx.QueryRowContext(
 			ctx,
 			`
@@ -133,6 +133,16 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, urls []strin
 
 func (storage *DatabaseStorage) Ping(ctx context.Context) error {
 	return storage.db.Ping()
+}
+
+func (storage *DatabaseStorage) generateUniqueShortSlug() string {
+	shortURL := util.Base62Encode(rand.Uint64())
+
+	if original, _ := storage.GetOriginalURLByShortURL(context.Background(), shortURL); original != "" {
+		shortURL = util.Base62Encode(rand.Uint64())
+	}
+
+	return shortURL
 }
 
 func (storage *DatabaseStorage) bootstrap() error {
