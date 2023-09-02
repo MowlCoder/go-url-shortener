@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,10 +16,10 @@ import (
 )
 
 type URLStorage interface {
-	SaveSeveralURL(urls []string) ([]models.ShortenedURL, error)
-	SaveURL(url string) (models.ShortenedURL, error)
-	GetOriginalURLByShortURL(shortURL string) (string, error)
-	Ping() error
+	SaveSeveralURL(ctx context.Context, urls []string) ([]models.ShortenedURL, error)
+	SaveURL(ctx context.Context, url string) (models.ShortenedURL, error)
+	GetOriginalURLByShortURL(ctx context.Context, shortURL string) (string, error)
+	Ping(ctx context.Context) error
 }
 
 type ShortenerHandler struct {
@@ -55,7 +56,7 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	shortenedURL, err := h.urlStorage.SaveURL(requestBody.URL)
+	shortenedURL, err := h.urlStorage.SaveURL(r.Context(), requestBody.URL)
 
 	if err != nil {
 		SendStatusCode(w, http.StatusBadRequest)
@@ -94,7 +95,7 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 		correlations[dto.OriginalURL] = dto.CorrelationID
 	}
 
-	shortenedURLs, err := h.urlStorage.SaveSeveralURL(urls)
+	shortenedURLs, err := h.urlStorage.SaveSeveralURL(r.Context(), urls)
 
 	if err != nil {
 		fmt.Println(err)
@@ -129,7 +130,7 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortenedURL, err := h.urlStorage.SaveURL(string(body))
+	shortenedURL, err := h.urlStorage.SaveURL(r.Context(), string(body))
 
 	if err != nil {
 		SendStatusCode(w, http.StatusInternalServerError)
@@ -141,7 +142,7 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 
 func (h *ShortenerHandler) RedirectToURLByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	originalURL, err := h.urlStorage.GetOriginalURLByShortURL(id)
+	originalURL, err := h.urlStorage.GetOriginalURLByShortURL(r.Context(), id)
 
 	if err != nil {
 		SendStatusCode(w, http.StatusBadRequest)
@@ -152,7 +153,7 @@ func (h *ShortenerHandler) RedirectToURLByID(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *ShortenerHandler) Ping(w http.ResponseWriter, r *http.Request) {
-	if err := h.urlStorage.Ping(); err != nil {
+	if err := h.urlStorage.Ping(r.Context()); err != nil {
 		SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}

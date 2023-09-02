@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"testing"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
@@ -12,7 +13,7 @@ func TestInMemoryStorage_SaveURL(t *testing.T) {
 	t.Run("Save url", func(t *testing.T) {
 		urlToAdd := "https://test.com"
 		storage := NewInMemoryStorage()
-		shortenedURL, err := storage.SaveURL(urlToAdd)
+		shortenedURL, err := storage.SaveURL(context.Background(), urlToAdd)
 
 		if assert.NoError(t, err) {
 			if assert.NotEmpty(t, shortenedURL) {
@@ -32,7 +33,7 @@ func TestInMemoryStorage_GetOriginalURLByShortURL(t *testing.T) {
 			OriginalURL: testURL,
 		}
 
-		url, err := storage.GetOriginalURLByShortURL(testID)
+		url, err := storage.GetOriginalURLByShortURL(context.Background(), testID)
 
 		if assert.NoError(t, err) {
 			assert.Equal(t, testURL, url)
@@ -43,7 +44,7 @@ func TestInMemoryStorage_GetOriginalURLByShortURL(t *testing.T) {
 		testID := "testid"
 		storage := NewInMemoryStorage()
 
-		_, err := storage.GetOriginalURLByShortURL(testID)
+		_, err := storage.GetOriginalURLByShortURL(context.Background(), testID)
 
 		assert.Error(t, err)
 	})

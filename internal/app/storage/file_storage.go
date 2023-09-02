@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"math/rand"
 	"os"
@@ -36,7 +37,7 @@ func NewFileStorage(fileStoragePath string) *FileStorage {
 	return &storage
 }
 
-func (storage *FileStorage) GetOriginalURLByShortURL(shortURL string) (string, error) {
+func (storage *FileStorage) GetOriginalURLByShortURL(ctx context.Context, shortURL string) (string, error) {
 	if url, ok := storage.structure[shortURL]; ok {
 		return url.OriginalURL, nil
 	}
@@ -44,7 +45,7 @@ func (storage *FileStorage) GetOriginalURLByShortURL(shortURL string) (string, e
 	return "", errorURLNotFound
 }
 
-func (storage *FileStorage) SaveURL(url string) (models.ShortenedURL, error) {
+func (storage *FileStorage) SaveURL(ctx context.Context, url string) (models.ShortenedURL, error) {
 	shortURL := util.Base62Encode(rand.Uint64())
 	storage.structure[shortURL] = models.ShortenedURL{
 		ID:          len(storage.structure) + 1,
@@ -59,7 +60,7 @@ func (storage *FileStorage) SaveURL(url string) (models.ShortenedURL, error) {
 	return storage.structure[shortURL], nil
 }
 
-func (storage *FileStorage) SaveSeveralURL(urls []string) ([]models.ShortenedURL, error) {
+func (storage *FileStorage) SaveSeveralURL(ctx context.Context, urls []string) ([]models.ShortenedURL, error) {
 	shortenedURLs := make([]models.ShortenedURL, 0, len(urls))
 
 	for _, url := range urls {
@@ -80,7 +81,7 @@ func (storage *FileStorage) SaveSeveralURL(urls []string) ([]models.ShortenedURL
 	return shortenedURLs, nil
 }
 
-func (storage *FileStorage) Ping() error {
+func (storage *FileStorage) Ping(ctx context.Context) error {
 	return nil
 }
 

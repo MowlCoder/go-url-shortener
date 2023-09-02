@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"math/rand"
 	"time"
@@ -35,8 +36,8 @@ func NewDatabaseStorage(databaseDNS string) (*DatabaseStorage, error) {
 	return &dbStorage, nil
 }
 
-func (storage *DatabaseStorage) GetOriginalURLByShortURL(shortURL string) (string, error) {
-	row := storage.db.QueryRow("SELECT original_url FROM shorten_url WHERE short_url = $1", shortURL)
+func (storage *DatabaseStorage) GetOriginalURLByShortURL(ctx context.Context, shortURL string) (string, error) {
+	row := storage.db.QueryRowContext(ctx, "SELECT original_url FROM shorten_url WHERE short_url = $1", shortURL)
 
 	if row == nil || row.Err() != nil {
 		return "", errorURLNotFound
@@ -48,10 +49,11 @@ func (storage *DatabaseStorage) GetOriginalURLByShortURL(shortURL string) (strin
 	return originalURL, nil
 }
 
-func (storage *DatabaseStorage) SaveURL(url string) (models.ShortenedURL, error) {
+func (storage *DatabaseStorage) SaveURL(ctx context.Context, url string) (models.ShortenedURL, error) {
 	shortURL := util.Base62Encode(rand.Uint64())
 
-	row := storage.db.QueryRow(
+	row := storage.db.QueryRowContext(
+		ctx,
 		"INSERT INTO shorten_url (short_url, original_url, created_at) VALUES ($1, $2, $3) RETURNING id, short_url, original_url;",
 		shortURL, url, time.Now(),
 	)
@@ -69,7 +71,7 @@ func (storage *DatabaseStorage) SaveURL(url string) (models.ShortenedURL, error)
 	return shortenedURL, nil
 }
 
-func (storage *DatabaseStorage) SaveSeveralURL(urls []string) ([]models.ShortenedURL, error) {
+func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, urls []string) ([]models.ShortenedURL, error) {
 	tx, err := storage.db.Begin()
 
 	if err != nil {
@@ -82,7 +84,8 @@ func (storage *DatabaseStorage) SaveSeveralURL(urls []string) ([]models.Shortene
 
 	for _, url := range urls {
 		shortURL := util.Base62Encode(rand.Uint64() - rand.Uint64())
-		row := tx.QueryRow(
+		row := tx.QueryRowContext(
+			ctx,
 			"INSERT INTO shorten_url (short_url, original_url, created_at) VALUES ($1, $2, $3) RETURNING id, short_url, original_url;",
 			shortURL, url, time.Now(),
 		)
@@ -107,7 +110,7 @@ func (storage *DatabaseStorage) SaveSeveralURL(urls []string) ([]models.Shortene
 	return shortenedURLs, nil
 }
 
-func (storage *DatabaseStorage) Ping() error {
+func (storage *DatabaseStorage) Ping(ctx context.Context) error {
 	return storage.db.Ping()
 }
 

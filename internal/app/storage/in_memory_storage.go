@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"math/rand"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
@@ -20,7 +21,7 @@ func NewInMemoryStorage() *InMemoryStorage {
 	return &storage
 }
 
-func (storage *InMemoryStorage) GetOriginalURLByShortURL(shortURL string) (string, error) {
+func (storage *InMemoryStorage) GetOriginalURLByShortURL(ctx context.Context, shortURL string) (string, error) {
 	if url, ok := storage.structure[shortURL]; ok {
 		return url.OriginalURL, nil
 	}
@@ -28,7 +29,7 @@ func (storage *InMemoryStorage) GetOriginalURLByShortURL(shortURL string) (strin
 	return "", errorURLNotFound
 }
 
-func (storage *InMemoryStorage) SaveURL(url string) (models.ShortenedURL, error) {
+func (storage *InMemoryStorage) SaveURL(ctx context.Context, url string) (models.ShortenedURL, error) {
 	shortURL := util.Base62Encode(rand.Uint64())
 	storage.structure[shortURL] = models.ShortenedURL{
 		ID:          len(storage.structure) + 1,
@@ -39,11 +40,11 @@ func (storage *InMemoryStorage) SaveURL(url string) (models.ShortenedURL, error)
 	return storage.structure[shortURL], nil
 }
 
-func (storage *InMemoryStorage) SaveSeveralURL(urls []string) ([]models.ShortenedURL, error) {
+func (storage *InMemoryStorage) SaveSeveralURL(ctx context.Context, urls []string) ([]models.ShortenedURL, error) {
 	shortenedURLs := make([]models.ShortenedURL, 0, len(urls))
 
 	for _, url := range urls {
-		shortenedURL, err := storage.SaveURL(url)
+		shortenedURL, err := storage.SaveURL(ctx, url)
 
 		if err != nil {
 			return nil, err
@@ -55,6 +56,6 @@ func (storage *InMemoryStorage) SaveSeveralURL(urls []string) ([]models.Shortene
 	return shortenedURLs, nil
 }
 
-func (storage *InMemoryStorage) Ping() error {
+func (storage *InMemoryStorage) Ping(ctx context.Context) error {
 	return nil
 }
