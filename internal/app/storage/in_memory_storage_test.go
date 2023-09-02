@@ -12,11 +12,11 @@ func TestInMemoryStorage_SaveURL(t *testing.T) {
 	t.Run("Save url", func(t *testing.T) {
 		urlToAdd := "https://test.com"
 		storage := NewInMemoryStorage()
-		shortenedUrl, err := storage.SaveURL(urlToAdd)
+		shortenedURL, err := storage.SaveURL(urlToAdd)
 
 		if assert.NoError(t, err) {
-			if assert.NotEmpty(t, shortenedUrl) {
-				assert.Equal(t, urlToAdd, shortenedUrl.OriginalURL)
+			if assert.NotEmpty(t, shortenedURL) {
+				assert.Equal(t, urlToAdd, shortenedURL.OriginalURL)
 			}
 		}
 	})

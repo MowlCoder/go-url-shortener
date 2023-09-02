@@ -97,6 +97,7 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 	shortenedURLs, err := h.urlStorage.SaveSeveralURL(urls)
 
 	if err != nil {
+		fmt.Println(err)
 		SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
@@ -104,11 +105,11 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 	responseBody := make([]dtos.ShortBatchURLResponse, 0, len(shortenedURLs))
 
 	for _, shortenedURL := range shortenedURLs {
-		correlationId := correlations[shortenedURL.OriginalURL]
+		correlationID := correlations[shortenedURL.OriginalURL]
 
 		responseBody = append(responseBody, dtos.ShortBatchURLResponse{
 			ShortURL:      fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL),
-			CorrelationID: correlationId,
+			CorrelationID: correlationID,
 		})
 	}
 
