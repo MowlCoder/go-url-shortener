@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -138,8 +139,11 @@ func (storage *DatabaseStorage) Ping(ctx context.Context) error {
 func (storage *DatabaseStorage) generateUniqueShortSlug() string {
 	shortURL := util.Base62Encode(rand.Uint64())
 
+	fmt.Println("old", shortURL)
+
 	if original, _ := storage.GetOriginalURLByShortURL(context.Background(), shortURL); original != "" {
 		shortURL = util.Base62Encode(rand.Uint64())
+		fmt.Println("new", shortURL)
 	}
 
 	return shortURL
