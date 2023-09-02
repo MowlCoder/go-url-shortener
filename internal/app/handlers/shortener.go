@@ -3,11 +3,13 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/handlers/dtos"
+	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
 
 	"github.com/go-chi/chi/v5"
@@ -59,7 +61,14 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 	shortenedURL, err := h.urlStorage.SaveURL(r.Context(), requestBody.URL)
 
 	if err != nil {
-		SendStatusCode(w, http.StatusBadRequest)
+		if errors.Is(err, storage.ErrRowConflict) {
+			SendJSONResponse(w, http.StatusConflict, dtos.ShortURLResponse{
+				Result: fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL),
+			})
+			return
+		}
+
+		SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
 
@@ -95,10 +104,9 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 		correlations[dto.OriginalURL] = dto.CorrelationID
 	}
 
-	shortenedURLs, err := h.urlStorage.SaveSeveralURL(r.Context(), urls)
+	shortenedURLs, storageErr := h.urlStorage.SaveSeveralURL(r.Context(), urls)
 
-	if err != nil {
-		fmt.Println(err)
+	if storageErr != nil && !errors.Is(storageErr, storage.ErrRowConflict) {
 		SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
@@ -112,6 +120,11 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 			ShortURL:      fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL),
 			CorrelationID: correlationID,
 		})
+	}
+
+	if errors.Is(storageErr, storage.ErrRowConflict) {
+		SendJSONResponse(w, 409, responseBody)
+		return
 	}
 
 	SendJSONResponse(w, 201, responseBody)

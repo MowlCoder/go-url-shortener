@@ -54,7 +54,11 @@ func (storage *DatabaseStorage) SaveURL(ctx context.Context, url string) (models
 
 	row := storage.db.QueryRowContext(
 		ctx,
-		"INSERT INTO shorten_url (short_url, original_url, created_at) VALUES ($1, $2, $3) RETURNING id, short_url, original_url;",
+		`
+			INSERT INTO shorten_url (short_url, original_url, created_at) VALUES ($1, $2, $3)
+			ON CONFLICT (original_url) DO UPDATE SET original_url = EXCLUDED.original_url
+			RETURNING id, short_url, original_url;
+		`,
 		shortURL, url, time.Now(),
 	)
 
@@ -66,6 +70,10 @@ func (storage *DatabaseStorage) SaveURL(ctx context.Context, url string) (models
 
 	if err := row.Scan(&shortenedURL.ID, &shortenedURL.ShortURL, &shortenedURL.OriginalURL); err != nil {
 		return models.ShortenedURL{}, err
+	}
+
+	if shortURL != shortenedURL.ShortURL {
+		return shortenedURL, ErrRowConflict
 	}
 
 	return shortenedURL, nil
@@ -81,12 +89,17 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, urls []strin
 	defer tx.Rollback()
 
 	shortenedURLs := make([]models.ShortenedURL, 0, len(urls))
+	isResultWithConflict := false
 
 	for _, url := range urls {
 		shortURL := util.Base62Encode(rand.Uint64() - rand.Uint64())
 		row := tx.QueryRowContext(
 			ctx,
-			"INSERT INTO shorten_url (short_url, original_url, created_at) VALUES ($1, $2, $3) RETURNING id, short_url, original_url;",
+			`
+				INSERT INTO shorten_url (short_url, original_url, created_at) VALUES ($1, $2, $3)
+				ON CONFLICT (original_url) DO UPDATE SET original_url = EXCLUDED.original_url                                                              
+			  	RETURNING id, short_url, original_url;
+		`,
 			shortURL, url, time.Now(),
 		)
 
@@ -100,11 +113,19 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, urls []strin
 			return nil, err
 		}
 
+		if shortURL != shortenedURL.ShortURL {
+			isResultWithConflict = true
+		}
+
 		shortenedURLs = append(shortenedURLs, shortenedURL)
 	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
+	}
+
+	if isResultWithConflict {
+		return shortenedURLs, ErrRowConflict
 	}
 
 	return shortenedURLs, nil
@@ -132,6 +153,7 @@ func (storage *DatabaseStorage) bootstrap() error {
 		)
 	`)
 	tx.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS short_url_idx ON shorten_url (short_url)`)
+	tx.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS original_url_idx ON shorten_url (original_url)`)
 
 	return tx.Commit()
 }
