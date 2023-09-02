@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -51,7 +50,7 @@ func (storage *DatabaseStorage) GetOriginalURLByShortURL(ctx context.Context, sh
 }
 
 func (storage *DatabaseStorage) SaveURL(ctx context.Context, url string) (models.ShortenedURL, error) {
-	shortURL := storage.generateUniqueShortSlug()
+	shortURL := storage.generateUniqueShortSlug(ctx)
 
 	row := storage.db.QueryRowContext(
 		ctx,
@@ -93,7 +92,7 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, urls []strin
 	isResultWithConflict := false
 
 	for _, url := range urls {
-		shortURL := storage.generateUniqueShortSlug()
+		shortURL := storage.generateUniqueShortSlug(ctx)
 		row := tx.QueryRowContext(
 			ctx,
 			`
@@ -136,15 +135,11 @@ func (storage *DatabaseStorage) Ping(ctx context.Context) error {
 	return storage.db.Ping()
 }
 
-func (storage *DatabaseStorage) generateUniqueShortSlug() string {
-	shortURL := util.Base62Encode(rand.Uint64())
+func (storage *DatabaseStorage) generateUniqueShortSlug(ctx context.Context) string {
+	shortURL := ""
 
-	fmt.Println("old", shortURL)
-
-	for original := "original"; original != ""; original, _ = storage.GetOriginalURLByShortURL(context.Background(), shortURL) {
-		fmt.Println(original)
+	for original := "original"; original != ""; original, _ = storage.GetOriginalURLByShortURL(ctx, shortURL) {
 		shortURL = util.Base62Encode(rand.Uint64())
-		fmt.Println("new", shortURL)
 	}
 
 	return shortURL

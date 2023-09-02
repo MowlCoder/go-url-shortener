@@ -30,7 +30,7 @@ func (storage *InMemoryStorage) GetOriginalURLByShortURL(ctx context.Context, sh
 }
 
 func (storage *InMemoryStorage) SaveURL(ctx context.Context, url string) (models.ShortenedURL, error) {
-	shortURL := util.Base62Encode(rand.Uint64())
+	shortURL := storage.generateUniqueShortSlug(ctx)
 	storage.structure[shortURL] = models.ShortenedURL{
 		ID:          len(storage.structure) + 1,
 		ShortURL:    shortURL,
@@ -58,4 +58,14 @@ func (storage *InMemoryStorage) SaveSeveralURL(ctx context.Context, urls []strin
 
 func (storage *InMemoryStorage) Ping(ctx context.Context) error {
 	return nil
+}
+
+func (storage *InMemoryStorage) generateUniqueShortSlug(ctx context.Context) string {
+	shortURL := ""
+
+	for original := "original"; original != ""; original, _ = storage.GetOriginalURLByShortURL(ctx, shortURL) {
+		shortURL = util.Base62Encode(rand.Uint64())
+	}
+
+	return shortURL
 }

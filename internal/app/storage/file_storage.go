@@ -46,7 +46,7 @@ func (storage *FileStorage) GetOriginalURLByShortURL(ctx context.Context, shortU
 }
 
 func (storage *FileStorage) SaveURL(ctx context.Context, url string) (models.ShortenedURL, error) {
-	shortURL := util.Base62Encode(rand.Uint64())
+	shortURL := storage.generateUniqueShortSlug(ctx)
 	storage.structure[shortURL] = models.ShortenedURL{
 		ID:          len(storage.structure) + 1,
 		ShortURL:    shortURL,
@@ -64,7 +64,7 @@ func (storage *FileStorage) SaveSeveralURL(ctx context.Context, urls []string) (
 	shortenedURLs := make([]models.ShortenedURL, 0, len(urls))
 
 	for _, url := range urls {
-		shortURL := util.Base62Encode(rand.Uint64())
+		shortURL := storage.generateUniqueShortSlug(ctx)
 		storage.structure[shortURL] = models.ShortenedURL{
 			ID:          len(storage.structure) + 1,
 			ShortURL:    shortURL,
@@ -83,6 +83,16 @@ func (storage *FileStorage) SaveSeveralURL(ctx context.Context, urls []string) (
 
 func (storage *FileStorage) Ping(ctx context.Context) error {
 	return nil
+}
+
+func (storage *FileStorage) generateUniqueShortSlug(ctx context.Context) string {
+	shortURL := ""
+
+	for original := "original"; original != ""; original, _ = storage.GetOriginalURLByShortURL(ctx, shortURL) {
+		shortURL = util.Base62Encode(rand.Uint64())
+	}
+
+	return shortURL
 }
 
 func (storage *FileStorage) parseFromFile() error {
