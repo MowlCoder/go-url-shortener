@@ -81,7 +81,7 @@ func (storage *DatabaseStorage) SaveSeveralURL(urls []string) ([]models.Shortene
 	shortenedURLs := make([]models.ShortenedURL, 0, len(urls))
 
 	for _, url := range urls {
-		shortURL := util.Base62Encode(rand.Uint64())
+		shortURL := util.Base62Encode(rand.Uint64() - rand.Uint64())
 		row := tx.QueryRow(
 			"INSERT INTO shorten_url (short_url, original_url, created_at) VALUES ($1, $2, $3) RETURNING id, short_url, original_url;",
 			shortURL, url, time.Now(),
