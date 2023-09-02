@@ -151,6 +151,8 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		fmt.Println(err)
+
 		SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
