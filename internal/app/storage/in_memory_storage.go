@@ -28,7 +28,7 @@ func (storage *InMemoryStorage) GetOriginalURLByShortURL(shortURL string) (strin
 	return "", errorURLNotFound
 }
 
-func (storage *InMemoryStorage) SaveURL(url string) (string, error) {
+func (storage *InMemoryStorage) SaveURL(url string) (models.ShortenedURL, error) {
 	shortURL := util.Base62Encode(rand.Uint64())
 	storage.structure[shortURL] = models.ShortenedURL{
 		ID:          len(storage.structure) + 1,
@@ -36,7 +36,23 @@ func (storage *InMemoryStorage) SaveURL(url string) (string, error) {
 		OriginalURL: url,
 	}
 
-	return shortURL, nil
+	return storage.structure[shortURL], nil
+}
+
+func (storage *InMemoryStorage) SaveSeveralURL(urls []string) ([]models.ShortenedURL, error) {
+	shortenedURLs := make([]models.ShortenedURL, 0, len(urls))
+
+	for _, url := range urls {
+		shortenedURL, err := storage.SaveURL(url)
+
+		if err != nil {
+			return nil, err
+		}
+
+		shortenedURLs = append(shortenedURLs, shortenedURL)
+	}
+
+	return shortenedURLs, nil
 }
 
 func (storage *InMemoryStorage) Ping() error {

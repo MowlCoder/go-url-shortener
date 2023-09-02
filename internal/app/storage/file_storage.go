@@ -44,7 +44,7 @@ func (storage *FileStorage) GetOriginalURLByShortURL(shortURL string) (string, e
 	return "", errorURLNotFound
 }
 
-func (storage *FileStorage) SaveURL(url string) (string, error) {
+func (storage *FileStorage) SaveURL(url string) (models.ShortenedURL, error) {
 	shortURL := util.Base62Encode(rand.Uint64())
 	storage.structure[shortURL] = models.ShortenedURL{
 		ID:          len(storage.structure) + 1,
@@ -56,7 +56,28 @@ func (storage *FileStorage) SaveURL(url string) (string, error) {
 		storage.saveToFile()
 	}
 
-	return shortURL, nil
+	return storage.structure[shortURL], nil
+}
+
+func (storage *FileStorage) SaveSeveralURL(urls []string) ([]models.ShortenedURL, error) {
+	shortenedURLs := make([]models.ShortenedURL, 0, len(urls))
+
+	for _, url := range urls {
+		shortURL := util.Base62Encode(rand.Uint64())
+		storage.structure[shortURL] = models.ShortenedURL{
+			ID:          len(storage.structure) + 1,
+			ShortURL:    shortURL,
+			OriginalURL: url,
+		}
+
+		shortenedURLs = append(shortenedURLs, storage.structure[shortURL])
+	}
+
+	if storage.savingChanges {
+		storage.saveToFile()
+	}
+
+	return shortenedURLs, nil
 }
 
 func (storage *FileStorage) Ping() error {

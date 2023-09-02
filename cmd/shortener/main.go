@@ -63,6 +63,7 @@ func main() {
 		return middlewares.WithLogging(handler, customLogger)
 	})
 
+	mux.Post("/api/shorten/batch", shortenerHandler.ShortBatchURL)
 	mux.Post("/api/shorten", shortenerHandler.ShortURLJSON)
 	mux.Post("/", shortenerHandler.ShortURL)
 	mux.Get("/ping", shortenerHandler.Ping)

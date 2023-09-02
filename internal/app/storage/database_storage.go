@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
 	"github.com/MowlCoder/go-url-shortener/internal/app/util"
 )
 
@@ -47,15 +48,63 @@ func (storage *DatabaseStorage) GetOriginalURLByShortURL(shortURL string) (strin
 	return originalURL, nil
 }
 
-func (storage *DatabaseStorage) SaveURL(url string) (string, error) {
+func (storage *DatabaseStorage) SaveURL(url string) (models.ShortenedURL, error) {
 	shortURL := util.Base62Encode(rand.Uint64())
 
-	_, err := storage.db.Exec(
+	row := storage.db.QueryRow(
 		"INSERT INTO shorten_url (short_url, original_url, created_at) VALUES ($1, $2, $3) RETURNING id, short_url, original_url;",
 		shortURL, url, time.Now(),
 	)
 
-	return shortURL, err
+	if row.Err() != nil {
+		return models.ShortenedURL{}, row.Err()
+	}
+
+	shortenedURL := models.ShortenedURL{}
+
+	if err := row.Scan(&shortenedURL.ID, &shortenedURL.ShortURL, &shortenedURL.OriginalURL); err != nil {
+		return models.ShortenedURL{}, err
+	}
+
+	return shortenedURL, nil
+}
+
+func (storage *DatabaseStorage) SaveSeveralURL(urls []string) ([]models.ShortenedURL, error) {
+	tx, err := storage.db.Begin()
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer tx.Rollback()
+
+	shortenedURLs := make([]models.ShortenedURL, 0, len(urls))
+
+	for _, url := range urls {
+		shortURL := util.Base62Encode(rand.Uint64())
+		row := tx.QueryRow(
+			"INSERT INTO shorten_url (short_url, original_url, created_at) VALUES ($1, $2, $3) RETURNING id, short_url, original_url;",
+			shortURL, url, time.Now(),
+		)
+
+		if row.Err() != nil {
+			return nil, row.Err()
+		}
+
+		shortenedURL := models.ShortenedURL{}
+
+		if err := row.Scan(&shortenedURL.ID, &shortenedURL.ShortURL, &shortenedURL.OriginalURL); err != nil {
+			return nil, err
+		}
+
+		shortenedURLs = append(shortenedURLs, shortenedURL)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return shortenedURLs, nil
 }
 
 func (storage *DatabaseStorage) Ping() error {

@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/handlers/dtos"
+	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
 
 	"github.com/go-chi/chi/v5"
 
@@ -14,7 +15,8 @@ import (
 )
 
 type URLStorage interface {
-	SaveURL(url string) (string, error)
+	SaveSeveralURL(urls []string) ([]models.ShortenedURL, error)
+	SaveURL(url string) (models.ShortenedURL, error)
 	GetOriginalURLByShortURL(shortURL string) (string, error)
 	Ping() error
 }
@@ -53,7 +55,7 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	id, err := h.urlStorage.SaveURL(requestBody.URL)
+	shortenedURL, err := h.urlStorage.SaveURL(requestBody.URL)
 
 	if err != nil {
 		SendStatusCode(w, http.StatusBadRequest)
@@ -61,8 +63,56 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 	}
 
 	SendJSONResponse(w, http.StatusCreated, dtos.ShortURLResponse{
-		Result: fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, id),
+		Result: fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL),
 	})
+}
+
+func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request) {
+	requestBody := make([]dtos.ShortBatchURLDto, 0)
+	rawBody, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		SendStatusCode(w, http.StatusBadRequest)
+		return
+	}
+
+	if err := json.Unmarshal(rawBody, &requestBody); err != nil {
+		SendStatusCode(w, http.StatusBadRequest)
+		return
+	}
+
+	if len(requestBody) == 0 {
+		SendStatusCode(w, http.StatusBadRequest)
+		return
+	}
+
+	urls := make([]string, 0, len(requestBody))
+	correlations := make(map[string]string)
+
+	for _, dto := range requestBody {
+		urls = append(urls, dto.OriginalURL)
+		correlations[dto.OriginalURL] = dto.CorrelationID
+	}
+
+	shortenedURLs, err := h.urlStorage.SaveSeveralURL(urls)
+
+	if err != nil {
+		SendStatusCode(w, http.StatusInternalServerError)
+		return
+	}
+
+	responseBody := make([]dtos.ShortBatchURLResponse, 0, len(shortenedURLs))
+
+	for _, shortenedURL := range shortenedURLs {
+		correlationId := correlations[shortenedURL.OriginalURL]
+
+		responseBody = append(responseBody, dtos.ShortBatchURLResponse{
+			ShortURL:      fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL),
+			CorrelationID: correlationId,
+		})
+	}
+
+	SendJSONResponse(w, 201, responseBody)
 }
 
 func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
@@ -78,14 +128,14 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := h.urlStorage.SaveURL(string(body))
+	shortenedURL, err := h.urlStorage.SaveURL(string(body))
 
 	if err != nil {
-		SendStatusCode(w, http.StatusBadRequest)
+		SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
 
-	SendTextResponse(w, http.StatusCreated, fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, id))
+	SendTextResponse(w, http.StatusCreated, fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL))
 }
 
 func (h *ShortenerHandler) RedirectToURLByID(w http.ResponseWriter, r *http.Request) {
