@@ -146,6 +146,11 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 	shortenedURL, err := h.urlStorage.SaveURL(r.Context(), string(body))
 
 	if err != nil {
+		if errors.Is(err, storage.ErrRowConflict) {
+			SendTextResponse(w, http.StatusConflict, fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL))
+			return
+		}
+
 		SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
