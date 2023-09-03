@@ -40,11 +40,11 @@ func (storage *InMemoryStorage) FindByOriginalURL(ctx context.Context, originalU
 	return models.ShortenedURL{}, ErrNotFound
 }
 
-func (storage *InMemoryStorage) SaveURL(ctx context.Context, url string) (models.ShortenedURL, error) {
+func (storage *InMemoryStorage) SaveURL(ctx context.Context, url string) (*models.ShortenedURL, error) {
 	shortenedURL, err := storage.FindByOriginalURL(ctx, url)
 
 	if err == nil {
-		return shortenedURL, ErrRowConflict
+		return &shortenedURL, ErrRowConflict
 	}
 
 	shortURL := storage.generateUniqueShortSlug(ctx)
@@ -54,7 +54,9 @@ func (storage *InMemoryStorage) SaveURL(ctx context.Context, url string) (models
 		OriginalURL: url,
 	}
 
-	return storage.structure[shortURL], nil
+	shortenedURL = storage.structure[shortURL]
+
+	return &shortenedURL, nil
 }
 
 func (storage *InMemoryStorage) SaveSeveralURL(ctx context.Context, urls []string) ([]models.ShortenedURL, error) {
@@ -67,7 +69,7 @@ func (storage *InMemoryStorage) SaveSeveralURL(ctx context.Context, urls []strin
 			return nil, err
 		}
 
-		shortenedURLs = append(shortenedURLs, shortenedURL)
+		shortenedURLs = append(shortenedURLs, *shortenedURL)
 	}
 
 	return shortenedURLs, nil

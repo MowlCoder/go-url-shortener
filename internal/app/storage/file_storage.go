@@ -45,17 +45,17 @@ func (storage *FileStorage) GetOriginalURLByShortURL(ctx context.Context, shortU
 	return "", errorURLNotFound
 }
 
-func (storage *FileStorage) FindByOriginalURL(ctx context.Context, originalURL string) (models.ShortenedURL, error) {
+func (storage *FileStorage) FindByOriginalURL(ctx context.Context, originalURL string) (*models.ShortenedURL, error) {
 	for _, value := range storage.structure {
 		if value.OriginalURL == originalURL {
-			return value, nil
+			return &value, nil
 		}
 	}
 
-	return models.ShortenedURL{}, ErrNotFound
+	return nil, ErrNotFound
 }
 
-func (storage *FileStorage) SaveURL(ctx context.Context, url string) (models.ShortenedURL, error) {
+func (storage *FileStorage) SaveURL(ctx context.Context, url string) (*models.ShortenedURL, error) {
 	shortenedURL, err := storage.FindByOriginalURL(ctx, url)
 
 	if err == nil {
@@ -63,17 +63,18 @@ func (storage *FileStorage) SaveURL(ctx context.Context, url string) (models.Sho
 	}
 
 	shortURL := storage.generateUniqueShortSlug(ctx)
-	storage.structure[shortURL] = models.ShortenedURL{
+	shortenedURL = &models.ShortenedURL{
 		ID:          len(storage.structure) + 1,
 		ShortURL:    shortURL,
 		OriginalURL: url,
 	}
+	storage.structure[shortURL] = *shortenedURL
 
 	if storage.savingChanges {
 		storage.saveToFile()
 	}
 
-	return storage.structure[shortURL], nil
+	return shortenedURL, nil
 }
 
 func (storage *FileStorage) SaveSeveralURL(ctx context.Context, urls []string) ([]models.ShortenedURL, error) {
@@ -84,15 +85,16 @@ func (storage *FileStorage) SaveSeveralURL(ctx context.Context, urls []string) (
 
 		if err != nil {
 			shortURL := storage.generateUniqueShortSlug(ctx)
-			storage.structure[shortURL] = models.ShortenedURL{
+			shortenedURL = &models.ShortenedURL{
 				ID:          len(storage.structure) + 1,
 				ShortURL:    shortURL,
 				OriginalURL: url,
 			}
-			shortenedURL = storage.structure[shortURL]
+
+			storage.structure[shortURL] = *shortenedURL
 		}
 
-		shortenedURLs = append(shortenedURLs, shortenedURL)
+		shortenedURLs = append(shortenedURLs, *shortenedURL)
 	}
 
 	if storage.savingChanges {

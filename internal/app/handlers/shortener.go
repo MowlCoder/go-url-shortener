@@ -19,7 +19,7 @@ import (
 
 type URLStorage interface {
 	SaveSeveralURL(ctx context.Context, urls []string) ([]models.ShortenedURL, error)
-	SaveURL(ctx context.Context, url string) (models.ShortenedURL, error)
+	SaveURL(ctx context.Context, url string) (*models.ShortenedURL, error)
 	GetOriginalURLByShortURL(ctx context.Context, shortURL string) (string, error)
 	Ping(ctx context.Context) error
 }
