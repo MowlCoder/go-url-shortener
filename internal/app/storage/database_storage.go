@@ -89,7 +89,6 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, urls []strin
 	defer tx.Rollback()
 
 	shortenedURLs := make([]models.ShortenedURL, 0, len(urls))
-	isResultWithConflict := false
 
 	for _, url := range urls {
 		shortURL := storage.generateUniqueShortSlug(ctx)
@@ -113,19 +112,11 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, urls []strin
 			return nil, err
 		}
 
-		if shortURL != shortenedURL.ShortURL {
-			isResultWithConflict = true
-		}
-
 		shortenedURLs = append(shortenedURLs, shortenedURL)
 	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
-	}
-
-	if isResultWithConflict {
-		return shortenedURLs, ErrRowConflict
 	}
 
 	return shortenedURLs, nil

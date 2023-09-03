@@ -45,7 +45,23 @@ func (storage *FileStorage) GetOriginalURLByShortURL(ctx context.Context, shortU
 	return "", errorURLNotFound
 }
 
+func (storage *FileStorage) FindByOriginalURL(ctx context.Context, originalURL string) (models.ShortenedURL, error) {
+	for _, value := range storage.structure {
+		if value.OriginalURL == originalURL {
+			return value, nil
+		}
+	}
+
+	return models.ShortenedURL{}, ErrNotFound
+}
+
 func (storage *FileStorage) SaveURL(ctx context.Context, url string) (models.ShortenedURL, error) {
+	shortenedURL, err := storage.FindByOriginalURL(ctx, url)
+
+	if err == nil {
+		return shortenedURL, ErrRowConflict
+	}
+
 	shortURL := storage.generateUniqueShortSlug(ctx)
 	storage.structure[shortURL] = models.ShortenedURL{
 		ID:          len(storage.structure) + 1,
@@ -64,14 +80,19 @@ func (storage *FileStorage) SaveSeveralURL(ctx context.Context, urls []string) (
 	shortenedURLs := make([]models.ShortenedURL, 0, len(urls))
 
 	for _, url := range urls {
-		shortURL := storage.generateUniqueShortSlug(ctx)
-		storage.structure[shortURL] = models.ShortenedURL{
-			ID:          len(storage.structure) + 1,
-			ShortURL:    shortURL,
-			OriginalURL: url,
+		shortenedURL, err := storage.FindByOriginalURL(ctx, url)
+
+		if err != nil {
+			shortURL := storage.generateUniqueShortSlug(ctx)
+			storage.structure[shortURL] = models.ShortenedURL{
+				ID:          len(storage.structure) + 1,
+				ShortURL:    shortURL,
+				OriginalURL: url,
+			}
+			shortenedURL = storage.structure[shortURL]
 		}
 
-		shortenedURLs = append(shortenedURLs, storage.structure[shortURL])
+		shortenedURLs = append(shortenedURLs, shortenedURL)
 	}
 
 	if storage.savingChanges {

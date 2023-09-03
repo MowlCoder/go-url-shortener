@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
@@ -29,7 +30,23 @@ func (storage *InMemoryStorage) GetOriginalURLByShortURL(ctx context.Context, sh
 	return "", errorURLNotFound
 }
 
+func (storage *InMemoryStorage) FindByOriginalURL(ctx context.Context, originalURL string) (models.ShortenedURL, error) {
+	for _, value := range storage.structure {
+		if value.OriginalURL == originalURL {
+			return value, nil
+		}
+	}
+
+	return models.ShortenedURL{}, ErrNotFound
+}
+
 func (storage *InMemoryStorage) SaveURL(ctx context.Context, url string) (models.ShortenedURL, error) {
+	shortenedURL, err := storage.FindByOriginalURL(ctx, url)
+
+	if err == nil {
+		return shortenedURL, ErrRowConflict
+	}
+
 	shortURL := storage.generateUniqueShortSlug(ctx)
 	storage.structure[shortURL] = models.ShortenedURL{
 		ID:          len(storage.structure) + 1,
@@ -46,7 +63,7 @@ func (storage *InMemoryStorage) SaveSeveralURL(ctx context.Context, urls []strin
 	for _, url := range urls {
 		shortenedURL, err := storage.SaveURL(ctx, url)
 
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrRowConflict) {
 			return nil, err
 		}
 

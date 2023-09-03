@@ -8,11 +8,11 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/MowlCoder/go-url-shortener/internal/app/handlers/dtos"
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
-
-	"github.com/go-chi/chi/v5"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/config"
 )
@@ -68,8 +68,6 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 
-		fmt.Println(err)
-
 		SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
@@ -109,8 +107,6 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 	shortenedURLs, storageErr := h.urlStorage.SaveSeveralURL(r.Context(), urls)
 
 	if storageErr != nil && !errors.Is(storageErr, storage.ErrRowConflict) {
-		fmt.Println(storageErr)
-
 		SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
@@ -124,11 +120,6 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 			ShortURL:      fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL),
 			CorrelationID: correlationID,
 		})
-	}
-
-	if errors.Is(storageErr, storage.ErrRowConflict) {
-		SendJSONResponse(w, 409, responseBody)
-		return
 	}
 
 	SendJSONResponse(w, 201, responseBody)
@@ -154,8 +145,6 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 			SendTextResponse(w, http.StatusConflict, fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL))
 			return
 		}
-
-		fmt.Println(err)
 
 		SendStatusCode(w, http.StatusInternalServerError)
 		return

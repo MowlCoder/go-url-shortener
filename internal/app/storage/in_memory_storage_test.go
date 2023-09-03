@@ -21,6 +21,23 @@ func TestInMemoryStorage_SaveURL(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("Save url twice", func(t *testing.T) {
+		urlToAdd := "https://test.com"
+		storage := NewInMemoryStorage()
+		shortenedURL, err := storage.SaveURL(context.Background(), urlToAdd)
+
+		if assert.NoError(t, err) {
+			if assert.NotEmpty(t, shortenedURL) {
+				assert.Equal(t, urlToAdd, shortenedURL.OriginalURL)
+			}
+		}
+
+		secondShortenedURL, err := storage.SaveURL(context.Background(), urlToAdd)
+
+		assert.ErrorIs(t, err, ErrRowConflict)
+		assert.Equal(t, secondShortenedURL.ShortURL, shortenedURL.ShortURL)
+	})
 }
 
 func TestInMemoryStorage_GetOriginalURLByShortURL(t *testing.T) {

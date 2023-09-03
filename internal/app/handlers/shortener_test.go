@@ -70,6 +70,28 @@ func TestShortURL(t *testing.T) {
 			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
 		})
 	}
+
+	t.Run("Create short link twice", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://practicum.yandex.ru/123"))
+		w := httptest.NewRecorder()
+
+		handler.ShortURL(w, request)
+
+		res := w.Result()
+
+		assert.Equal(t, 201, res.StatusCode)
+		defer res.Body.Close()
+		assert.Equal(t, "text/plain", res.Header.Get("Content-Type"))
+
+		request = httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://practicum.yandex.ru/123"))
+		w = httptest.NewRecorder()
+		handler.ShortURL(w, request)
+
+		res = w.Result()
+		assert.Equal(t, 409, res.StatusCode)
+		defer res.Body.Close()
+		assert.Equal(t, "text/plain", res.Header.Get("Content-Type"))
+	})
 }
 
 func TestShortURLJSON(t *testing.T) {
@@ -130,6 +152,34 @@ func TestShortURLJSON(t *testing.T) {
 			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
 		})
 	}
+
+	t.Run("Create short link twice", func(t *testing.T) {
+		jsonBody, err := json.Marshal(dtos.ShortURLDto{
+			URL: "https://vk.com/123",
+		})
+
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(jsonBody))
+		w := httptest.NewRecorder()
+
+		handler.ShortURLJSON(w, request)
+
+		res := w.Result()
+
+		assert.Equal(t, 201, res.StatusCode)
+		defer res.Body.Close()
+		assert.Equal(t, "application/json", res.Header.Get("Content-Type"))
+
+		request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(jsonBody))
+		w = httptest.NewRecorder()
+		handler.ShortURLJSON(w, request)
+
+		res = w.Result()
+		assert.Equal(t, 409, res.StatusCode)
+		defer res.Body.Close()
+		assert.Equal(t, "application/json", res.Header.Get("Content-Type"))
+	})
 }
 
 func TestShortBatchURL(t *testing.T) {
