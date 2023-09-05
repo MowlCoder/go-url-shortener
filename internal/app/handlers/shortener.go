@@ -133,6 +133,7 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 	shortenedURLs, err := h.urlStorage.SaveSeveralURL(r.Context(), saveDtos)
 
 	if err != nil {
+		fmt.Println(saveDtos)
 		fmt.Println(err)
 		SendStatusCode(w, http.StatusInternalServerError)
 		return
