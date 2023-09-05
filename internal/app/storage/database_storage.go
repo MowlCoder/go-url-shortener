@@ -87,7 +87,6 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 
 	defer tx.Rollback()
 
-	shortenedURLs := make([]models.ShortenedURL, 0, len(dtos))
 	originalUrls := make([]string, 0, len(dtos))
 
 	sqlStr := "INSERT INTO shorten_url (short_url, original_url, created_at) VALUES "
@@ -122,6 +121,8 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 	if rows.Err() != nil {
 		return nil, rows.Err()
 	}
+
+	shortenedURLs := make([]models.ShortenedURL, 0, len(dtos))
 
 	for rows.Next() {
 		shortenedURL := models.ShortenedURL{}
