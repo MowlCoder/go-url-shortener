@@ -1,7 +1,6 @@
 package services
 
 import (
-	"fmt"
 	"math/rand"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/util"
@@ -15,6 +14,5 @@ func NewStringGenerator() *StringGenerator {
 }
 
 func (sg *StringGenerator) GenerateRandom() string {
-	fmt.Println("Generating random string...")
-	return util.Base62Encode(rand.Uint64())[:6] + util.Base62Encode(rand.Uint64())[:6]
+	return util.Base62Encode(rand.Uint64())
 }
