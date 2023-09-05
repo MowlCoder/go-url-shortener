@@ -14,5 +14,5 @@ func NewStringGenerator() *StringGenerator {
 }
 
 func (sg *StringGenerator) GenerateRandom() string {
-	return util.Base62Encode(rand.Uint64())[:5] + util.Base62Encode(rand.Uint64())[:5]
+	return util.Base62Encode(rand.Uint64())[:6] + util.Base62Encode(rand.Uint64())[:6]
 }
