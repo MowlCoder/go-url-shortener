@@ -3,7 +3,9 @@ package main
 import (
 	"compress/gzip"
 	"fmt"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -20,6 +22,8 @@ import (
 )
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+
 	appConfig := &config.AppConfig{}
 	appConfig.ParseFlags()
 
