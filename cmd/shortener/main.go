@@ -13,6 +13,7 @@ import (
 	"github.com/MowlCoder/go-url-shortener/internal/app/handlers"
 	"github.com/MowlCoder/go-url-shortener/internal/app/logger"
 	"github.com/MowlCoder/go-url-shortener/internal/app/middlewares"
+	"github.com/MowlCoder/go-url-shortener/internal/app/services"
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/config"
@@ -43,7 +44,9 @@ func main() {
 		panic(err)
 	}
 
-	shortenerHandler := handlers.NewShortenerHandler(appConfig, urlStorage)
+	stringGeneratorService := services.NewStringGenerator()
+
+	shortenerHandler := handlers.NewShortenerHandler(appConfig, urlStorage, stringGeneratorService)
 
 	mux := chi.NewRouter()
 

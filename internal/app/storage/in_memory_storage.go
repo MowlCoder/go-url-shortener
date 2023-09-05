@@ -3,11 +3,9 @@ package storage
 import (
 	"context"
 	"errors"
-	"math/rand"
 
+	"github.com/MowlCoder/go-url-shortener/internal/app/domain"
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
-
-	"github.com/MowlCoder/go-url-shortener/internal/app/util"
 )
 
 type InMemoryStorage struct {
@@ -40,30 +38,29 @@ func (storage *InMemoryStorage) FindByOriginalURL(ctx context.Context, originalU
 	return models.ShortenedURL{}, ErrNotFound
 }
 
-func (storage *InMemoryStorage) SaveURL(ctx context.Context, url string) (*models.ShortenedURL, error) {
-	shortenedURL, err := storage.FindByOriginalURL(ctx, url)
+func (storage *InMemoryStorage) SaveURL(ctx context.Context, dto domain.SaveShortUrlDto) (*models.ShortenedURL, error) {
+	shortenedURL, err := storage.FindByOriginalURL(ctx, dto.OriginalURL)
 
 	if err == nil {
 		return &shortenedURL, ErrRowConflict
 	}
 
-	shortURL := storage.generateUniqueShortSlug(ctx)
-	storage.structure[shortURL] = models.ShortenedURL{
+	storage.structure[dto.ShortURL] = models.ShortenedURL{
 		ID:          len(storage.structure) + 1,
-		ShortURL:    shortURL,
-		OriginalURL: url,
+		ShortURL:    dto.ShortURL,
+		OriginalURL: dto.OriginalURL,
 	}
 
-	shortenedURL = storage.structure[shortURL]
+	shortenedURL = storage.structure[dto.ShortURL]
 
 	return &shortenedURL, nil
 }
 
-func (storage *InMemoryStorage) SaveSeveralURL(ctx context.Context, urls []string) ([]models.ShortenedURL, error) {
-	shortenedURLs := make([]models.ShortenedURL, 0, len(urls))
+func (storage *InMemoryStorage) SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortUrlDto) ([]models.ShortenedURL, error) {
+	shortenedURLs := make([]models.ShortenedURL, 0, len(dtos))
 
-	for _, url := range urls {
-		shortenedURL, err := storage.SaveURL(ctx, url)
+	for _, dto := range dtos {
+		shortenedURL, err := storage.SaveURL(ctx, dto)
 
 		if err != nil && !errors.Is(err, ErrRowConflict) {
 			return nil, err
@@ -77,14 +74,4 @@ func (storage *InMemoryStorage) SaveSeveralURL(ctx context.Context, urls []strin
 
 func (storage *InMemoryStorage) Ping(ctx context.Context) error {
 	return nil
-}
-
-func (storage *InMemoryStorage) generateUniqueShortSlug(ctx context.Context) string {
-	shortURL := ""
-
-	for original := "original"; original != ""; original, _ = storage.GetOriginalURLByShortURL(ctx, shortURL) {
-		shortURL = util.Base62Encode(rand.Uint64())
-	}
-
-	return shortURL
 }

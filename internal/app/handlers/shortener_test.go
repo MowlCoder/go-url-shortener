@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/handlers/dtos"
+	"github.com/MowlCoder/go-url-shortener/internal/app/services"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 
@@ -24,8 +25,9 @@ import (
 func TestShortURL(t *testing.T) {
 	appConfig := &config.AppConfig{}
 	urlStorage, _ := storage.New(appConfig)
+	stringsGeneratorService := services.NewStringGenerator()
 
-	handler := NewShortenerHandler(appConfig, urlStorage)
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
 
 	type want struct {
 		code        int
@@ -97,8 +99,9 @@ func TestShortURL(t *testing.T) {
 func TestShortURLJSON(t *testing.T) {
 	appConfig := &config.AppConfig{}
 	urlStorage, _ := storage.New(appConfig)
+	stringsGeneratorService := services.NewStringGenerator()
 
-	handler := NewShortenerHandler(appConfig, urlStorage)
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
 
 	type want struct {
 		code        int
@@ -185,8 +188,9 @@ func TestShortURLJSON(t *testing.T) {
 func TestShortBatchURL(t *testing.T) {
 	appConfig := &config.AppConfig{}
 	urlStorage, _ := storage.New(appConfig)
+	stringsGeneratorService := services.NewStringGenerator()
 
-	handler := NewShortenerHandler(appConfig, urlStorage)
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
 
 	type want struct {
 		code        int
@@ -292,7 +296,9 @@ func TestShortBatchURL(t *testing.T) {
 func TestRedirectToURLByID(t *testing.T) {
 	appConfig := &config.AppConfig{}
 	urlStorage, _ := storage.New(appConfig)
-	handler := NewShortenerHandler(appConfig, urlStorage)
+	stringsGeneratorService := services.NewStringGenerator()
+
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
 
 	type want struct {
 		code int

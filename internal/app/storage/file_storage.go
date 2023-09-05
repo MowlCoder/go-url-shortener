@@ -3,12 +3,10 @@ package storage
 import (
 	"context"
 	"encoding/json"
-	"math/rand"
 	"os"
 
+	"github.com/MowlCoder/go-url-shortener/internal/app/domain"
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
-
-	"github.com/MowlCoder/go-url-shortener/internal/app/util"
 )
 
 type FileStorage struct {
@@ -55,20 +53,19 @@ func (storage *FileStorage) FindByOriginalURL(ctx context.Context, originalURL s
 	return nil, ErrNotFound
 }
 
-func (storage *FileStorage) SaveURL(ctx context.Context, url string) (*models.ShortenedURL, error) {
-	shortenedURL, err := storage.FindByOriginalURL(ctx, url)
+func (storage *FileStorage) SaveURL(ctx context.Context, dto domain.SaveShortUrlDto) (*models.ShortenedURL, error) {
+	shortenedURL, err := storage.FindByOriginalURL(ctx, dto.OriginalURL)
 
 	if err == nil {
 		return shortenedURL, ErrRowConflict
 	}
 
-	shortURL := storage.generateUniqueShortSlug(ctx)
 	shortenedURL = &models.ShortenedURL{
 		ID:          len(storage.structure) + 1,
-		ShortURL:    shortURL,
-		OriginalURL: url,
+		ShortURL:    dto.ShortURL,
+		OriginalURL: dto.OriginalURL,
 	}
-	storage.structure[shortURL] = *shortenedURL
+	storage.structure[dto.ShortURL] = *shortenedURL
 
 	if storage.savingChanges {
 		storage.saveToFile()
@@ -77,21 +74,20 @@ func (storage *FileStorage) SaveURL(ctx context.Context, url string) (*models.Sh
 	return shortenedURL, nil
 }
 
-func (storage *FileStorage) SaveSeveralURL(ctx context.Context, urls []string) ([]models.ShortenedURL, error) {
-	shortenedURLs := make([]models.ShortenedURL, 0, len(urls))
+func (storage *FileStorage) SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortUrlDto) ([]models.ShortenedURL, error) {
+	shortenedURLs := make([]models.ShortenedURL, 0, len(dtos))
 
-	for _, url := range urls {
-		shortenedURL, err := storage.FindByOriginalURL(ctx, url)
+	for _, dto := range dtos {
+		shortenedURL, err := storage.FindByOriginalURL(ctx, dto.OriginalURL)
 
 		if err != nil {
-			shortURL := storage.generateUniqueShortSlug(ctx)
 			shortenedURL = &models.ShortenedURL{
 				ID:          len(storage.structure) + 1,
-				ShortURL:    shortURL,
-				OriginalURL: url,
+				ShortURL:    dto.ShortURL,
+				OriginalURL: dto.OriginalURL,
 			}
 
-			storage.structure[shortURL] = *shortenedURL
+			storage.structure[dto.ShortURL] = *shortenedURL
 		}
 
 		shortenedURLs = append(shortenedURLs, *shortenedURL)
@@ -106,16 +102,6 @@ func (storage *FileStorage) SaveSeveralURL(ctx context.Context, urls []string) (
 
 func (storage *FileStorage) Ping(ctx context.Context) error {
 	return nil
-}
-
-func (storage *FileStorage) generateUniqueShortSlug(ctx context.Context) string {
-	shortURL := ""
-
-	for original := "original"; original != ""; original, _ = storage.GetOriginalURLByShortURL(ctx, shortURL) {
-		shortURL = util.Base62Encode(rand.Uint64())
-	}
-
-	return shortURL
 }
 
 func (storage *FileStorage) parseFromFile() error {

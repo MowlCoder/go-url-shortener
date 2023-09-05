@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/MowlCoder/go-url-shortener/internal/app/domain"
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +14,10 @@ func TestInMemoryStorage_SaveURL(t *testing.T) {
 	t.Run("Save url", func(t *testing.T) {
 		urlToAdd := "https://test.com"
 		storage, _ := NewInMemoryStorage()
-		shortenedURL, err := storage.SaveURL(context.Background(), urlToAdd)
+		shortenedURL, err := storage.SaveURL(context.Background(), domain.SaveShortUrlDto{
+			OriginalURL: urlToAdd,
+			ShortURL:    "short-url",
+		})
 
 		if assert.NoError(t, err) {
 			if assert.NotEmpty(t, shortenedURL) {
@@ -25,7 +29,10 @@ func TestInMemoryStorage_SaveURL(t *testing.T) {
 	t.Run("Save url twice", func(t *testing.T) {
 		urlToAdd := "https://test.com"
 		storage, _ := NewInMemoryStorage()
-		shortenedURL, err := storage.SaveURL(context.Background(), urlToAdd)
+		shortenedURL, err := storage.SaveURL(context.Background(), domain.SaveShortUrlDto{
+			OriginalURL: urlToAdd,
+			ShortURL:    "short-url-1",
+		})
 
 		if assert.NoError(t, err) {
 			if assert.NotEmpty(t, shortenedURL) {
@@ -33,7 +40,10 @@ func TestInMemoryStorage_SaveURL(t *testing.T) {
 			}
 		}
 
-		secondShortenedURL, err := storage.SaveURL(context.Background(), urlToAdd)
+		secondShortenedURL, err := storage.SaveURL(context.Background(), domain.SaveShortUrlDto{
+			OriginalURL: urlToAdd,
+			ShortURL:    "short-url-2",
+		})
 
 		assert.ErrorIs(t, err, ErrRowConflict)
 		assert.Equal(t, secondShortenedURL.ShortURL, shortenedURL.ShortURL)

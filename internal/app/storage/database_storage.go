@@ -3,11 +3,12 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"math/rand"
+	"fmt"
+	"strings"
 	"time"
 
+	"github.com/MowlCoder/go-url-shortener/internal/app/domain"
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
-	"github.com/MowlCoder/go-url-shortener/internal/app/util"
 )
 
 type DatabaseStorage struct {
@@ -49,9 +50,7 @@ func (storage *DatabaseStorage) GetOriginalURLByShortURL(ctx context.Context, sh
 	return originalURL, nil
 }
 
-func (storage *DatabaseStorage) SaveURL(ctx context.Context, url string) (*models.ShortenedURL, error) {
-	shortURL := storage.generateUniqueShortSlug(ctx)
-
+func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShortUrlDto) (*models.ShortenedURL, error) {
 	row := storage.db.QueryRowContext(
 		ctx,
 		`
@@ -59,7 +58,7 @@ func (storage *DatabaseStorage) SaveURL(ctx context.Context, url string) (*model
 			ON CONFLICT (original_url) DO UPDATE SET original_url = EXCLUDED.original_url
 			RETURNING id, short_url, original_url;
 		`,
-		shortURL, url, time.Now(),
+		dto.ShortURL, dto.OriginalURL, time.Now(),
 	)
 
 	if row.Err() != nil {
@@ -72,14 +71,14 @@ func (storage *DatabaseStorage) SaveURL(ctx context.Context, url string) (*model
 		return nil, err
 	}
 
-	if shortURL != shortenedURL.ShortURL {
+	if dto.ShortURL != shortenedURL.ShortURL {
 		return &shortenedURL, ErrRowConflict
 	}
 
 	return &shortenedURL, nil
 }
 
-func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, urls []string) ([]models.ShortenedURL, error) {
+func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortUrlDto) ([]models.ShortenedURL, error) {
 	tx, err := storage.db.Begin()
 
 	if err != nil {
@@ -88,27 +87,42 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, urls []strin
 
 	defer tx.Rollback()
 
-	shortenedURLs := make([]models.ShortenedURL, 0, len(urls))
+	shortenedURLs := make([]models.ShortenedURL, 0, len(dtos))
+	originalUrls := make([]string, 0, len(dtos))
 
-	for _, url := range urls {
-		shortURL := storage.generateUniqueShortSlug(ctx)
-		row := tx.QueryRowContext(
-			ctx,
-			`
-				INSERT INTO shorten_url (short_url, original_url, created_at) VALUES ($1, $2, $3)
-				ON CONFLICT (original_url) DO UPDATE SET original_url = EXCLUDED.original_url                                                              
-			  	RETURNING id, short_url, original_url;
-		`,
-			shortURL, url, time.Now(),
-		)
+	sqlStr := "INSERT INTO shorten_url (short_url, original_url, created_at) VALUES "
+	vals := []interface{}{}
 
-		if row.Err() != nil {
-			return nil, row.Err()
-		}
+	for idx, dto := range dtos {
+		sqlStr += fmt.Sprintf("($%d, $%d, $%d),", idx*3+1, idx*3+2, idx*3+3)
+		vals = append(vals, dto.ShortURL, dto.OriginalURL, time.Now())
 
+		originalUrls = append(originalUrls, dto.OriginalURL)
+	}
+
+	sqlStr = sqlStr[0 : len(sqlStr)-1]
+	sqlStr += " ON CONFLICT (original_url) DO NOTHING"
+
+	_, err = tx.ExecContext(ctx, sqlStr, vals...)
+
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := tx.QueryContext(
+		ctx,
+		"SELECT id, short_url, original_url FROM shorten_url WHERE original_url = ANY($1::text[])",
+		"{"+strings.Join(originalUrls, ",")+"}",
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
 		shortenedURL := models.ShortenedURL{}
 
-		if err := row.Scan(&shortenedURL.ID, &shortenedURL.ShortURL, &shortenedURL.OriginalURL); err != nil {
+		if err := rows.Scan(&shortenedURL.ID, &shortenedURL.ShortURL, &shortenedURL.OriginalURL); err != nil {
 			return nil, err
 		}
 
@@ -124,10 +138,6 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, urls []strin
 
 func (storage *DatabaseStorage) Ping(ctx context.Context) error {
 	return storage.db.Ping()
-}
-
-func (storage *DatabaseStorage) generateUniqueShortSlug(ctx context.Context) string {
-	return util.Base62Encode(rand.Uint64())
 }
 
 func (storage *DatabaseStorage) bootstrap() error {

@@ -9,7 +9,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/MowlCoder/go-url-shortener/internal/app/domain"
 	"github.com/MowlCoder/go-url-shortener/internal/app/handlers/dtos"
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
@@ -18,24 +20,31 @@ import (
 )
 
 type URLStorage interface {
-	SaveSeveralURL(ctx context.Context, urls []string) ([]models.ShortenedURL, error)
-	SaveURL(ctx context.Context, url string) (*models.ShortenedURL, error)
+	SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortUrlDto) ([]models.ShortenedURL, error)
+	SaveURL(ctx context.Context, dto domain.SaveShortUrlDto) (*models.ShortenedURL, error)
 	GetOriginalURLByShortURL(ctx context.Context, shortURL string) (string, error)
 	Ping(ctx context.Context) error
 }
 
+type StringGeneratorService interface {
+	GenerateRandom() string
+}
+
 type ShortenerHandler struct {
-	config     *config.AppConfig
-	urlStorage URLStorage
+	config          *config.AppConfig
+	urlStorage      URLStorage
+	stringGenerator StringGeneratorService
 }
 
 func NewShortenerHandler(
 	config *config.AppConfig,
 	urlStorage URLStorage,
+	stringGenerator StringGeneratorService,
 ) *ShortenerHandler {
 	return &ShortenerHandler{
-		config:     config,
-		urlStorage: urlStorage,
+		config:          config,
+		urlStorage:      urlStorage,
+		stringGenerator: stringGenerator,
 	}
 }
 
@@ -58,18 +67,30 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	shortenedURL, err := h.urlStorage.SaveURL(r.Context(), requestBody.URL)
+	shortURL := h.stringGenerator.GenerateRandom()
+	shortenedURL, err := h.urlStorage.SaveURL(r.Context(), domain.SaveShortUrlDto{
+		OriginalURL: requestBody.URL,
+		ShortURL:    shortURL,
+	})
+
+	if errors.Is(err, storage.ErrRowConflict) {
+		SendJSONResponse(w, http.StatusConflict, dtos.ShortURLResponse{
+			Result: fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL),
+		})
+		return
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		shortURL = h.stringGenerator.GenerateRandom()
+		shortenedURL, err = h.urlStorage.SaveURL(r.Context(), domain.SaveShortUrlDto{
+			OriginalURL: requestBody.URL,
+			ShortURL:    shortURL,
+		})
+	}
 
 	if err != nil {
-		fmt.Println(err)
-
-		if errors.Is(err, storage.ErrRowConflict) {
-			SendJSONResponse(w, http.StatusConflict, dtos.ShortURLResponse{
-				Result: fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL),
-			})
-			return
-		}
-
 		SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
@@ -98,17 +119,21 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	urls := make([]string, 0, len(requestBody))
+	saveDtos := make([]domain.SaveShortUrlDto, 0, len(requestBody))
 	correlations := make(map[string]string)
 
 	for _, dto := range requestBody {
-		urls = append(urls, dto.OriginalURL)
+		saveDtos = append(saveDtos, domain.SaveShortUrlDto{
+			OriginalURL: dto.OriginalURL,
+			ShortURL:    h.stringGenerator.GenerateRandom(),
+		})
 		correlations[dto.OriginalURL] = dto.CorrelationID
 	}
 
-	shortenedURLs, err := h.urlStorage.SaveSeveralURL(r.Context(), urls)
+	shortenedURLs, err := h.urlStorage.SaveSeveralURL(r.Context(), saveDtos)
 
 	if err != nil {
+		fmt.Println(err)
 		SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
@@ -140,14 +165,28 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortenedURL, err := h.urlStorage.SaveURL(r.Context(), string(body))
+	shortURL := h.stringGenerator.GenerateRandom()
+	shortenedURL, err := h.urlStorage.SaveURL(r.Context(), domain.SaveShortUrlDto{
+		OriginalURL: string(body),
+		ShortURL:    shortURL,
+	})
+
+	if errors.Is(err, storage.ErrRowConflict) {
+		SendTextResponse(w, http.StatusConflict, fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL))
+		return
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		shortURL = h.stringGenerator.GenerateRandom()
+		shortenedURL, err = h.urlStorage.SaveURL(r.Context(), domain.SaveShortUrlDto{
+			OriginalURL: string(body),
+			ShortURL:    shortURL,
+		})
+	}
 
 	if err != nil {
-		if errors.Is(err, storage.ErrRowConflict) {
-			SendTextResponse(w, http.StatusConflict, fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL))
-			return
-		}
-
 		SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
