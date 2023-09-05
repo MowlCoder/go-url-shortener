@@ -111,7 +111,7 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 
 	row.Scan(&testURL.ID, &testURL.ShortURL, &testURL.OriginalURL)
 
-	fmt.Println(testURL)
+	fmt.Println("URL in DB: ", testURL)
 
 	sqlStr := "INSERT INTO shorten_url (short_url, original_url, created_at) VALUES "
 	vals := []interface{}{}
