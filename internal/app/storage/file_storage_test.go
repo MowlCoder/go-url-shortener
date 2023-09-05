@@ -14,7 +14,7 @@ func TestFileStorage_SaveURL(t *testing.T) {
 	t.Run("Save url", func(t *testing.T) {
 		urlToAdd := "https://test.com"
 		storage, _ := NewFileStorage("")
-		shortenedURL, err := storage.SaveURL(context.Background(), domain.SaveShortUrlDto{
+		shortenedURL, err := storage.SaveURL(context.Background(), domain.SaveShortURLDto{
 			OriginalURL: urlToAdd,
 			ShortURL:    "short-url",
 		})
@@ -29,7 +29,7 @@ func TestFileStorage_SaveURL(t *testing.T) {
 	t.Run("Save url twice", func(t *testing.T) {
 		urlToAdd := "https://test.com"
 		storage, _ := NewFileStorage("")
-		shortenedURL, err := storage.SaveURL(context.Background(), domain.SaveShortUrlDto{
+		shortenedURL, err := storage.SaveURL(context.Background(), domain.SaveShortURLDto{
 			OriginalURL: urlToAdd,
 			ShortURL:    "short-url-1",
 		})
@@ -40,7 +40,7 @@ func TestFileStorage_SaveURL(t *testing.T) {
 			}
 		}
 
-		secondShortenedURL, err := storage.SaveURL(context.Background(), domain.SaveShortUrlDto{
+		secondShortenedURL, err := storage.SaveURL(context.Background(), domain.SaveShortURLDto{
 			OriginalURL: urlToAdd,
 			ShortURL:    "short-url-2",
 		})

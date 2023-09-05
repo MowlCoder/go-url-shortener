@@ -53,7 +53,7 @@ func (storage *FileStorage) FindByOriginalURL(ctx context.Context, originalURL s
 	return nil, ErrNotFound
 }
 
-func (storage *FileStorage) SaveURL(ctx context.Context, dto domain.SaveShortUrlDto) (*models.ShortenedURL, error) {
+func (storage *FileStorage) SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error) {
 	shortenedURL, err := storage.FindByOriginalURL(ctx, dto.OriginalURL)
 
 	if err == nil {
@@ -74,7 +74,7 @@ func (storage *FileStorage) SaveURL(ctx context.Context, dto domain.SaveShortUrl
 	return shortenedURL, nil
 }
 
-func (storage *FileStorage) SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortUrlDto) ([]models.ShortenedURL, error) {
+func (storage *FileStorage) SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]models.ShortenedURL, error) {
 	shortenedURLs := make([]models.ShortenedURL, 0, len(dtos))
 
 	for _, dto := range dtos {

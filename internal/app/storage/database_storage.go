@@ -50,7 +50,7 @@ func (storage *DatabaseStorage) GetOriginalURLByShortURL(ctx context.Context, sh
 	return originalURL, nil
 }
 
-func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShortUrlDto) (*models.ShortenedURL, error) {
+func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error) {
 	row := storage.db.QueryRowContext(
 		ctx,
 		`
@@ -78,7 +78,7 @@ func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShor
 	return &shortenedURL, nil
 }
 
-func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortUrlDto) ([]models.ShortenedURL, error) {
+func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]models.ShortenedURL, error) {
 	tx, err := storage.db.Begin()
 
 	if err != nil {
@@ -117,6 +117,10 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 
 	if err != nil {
 		return nil, err
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 
 	for rows.Next() {

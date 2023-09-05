@@ -20,8 +20,8 @@ import (
 )
 
 type URLStorage interface {
-	SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortUrlDto) ([]models.ShortenedURL, error)
-	SaveURL(ctx context.Context, dto domain.SaveShortUrlDto) (*models.ShortenedURL, error)
+	SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]models.ShortenedURL, error)
+	SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error)
 	GetOriginalURLByShortURL(ctx context.Context, shortURL string) (string, error)
 	Ping(ctx context.Context) error
 }
@@ -68,7 +68,7 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 	}
 
 	shortURL := h.stringGenerator.GenerateRandom()
-	shortenedURL, err := h.urlStorage.SaveURL(r.Context(), domain.SaveShortUrlDto{
+	shortenedURL, err := h.urlStorage.SaveURL(r.Context(), domain.SaveShortURLDto{
 		OriginalURL: requestBody.URL,
 		ShortURL:    shortURL,
 	})
@@ -84,7 +84,7 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		shortURL = h.stringGenerator.GenerateRandom()
-		shortenedURL, err = h.urlStorage.SaveURL(r.Context(), domain.SaveShortUrlDto{
+		shortenedURL, err = h.urlStorage.SaveURL(r.Context(), domain.SaveShortURLDto{
 			OriginalURL: requestBody.URL,
 			ShortURL:    shortURL,
 		})
@@ -119,11 +119,11 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	saveDtos := make([]domain.SaveShortUrlDto, 0, len(requestBody))
+	saveDtos := make([]domain.SaveShortURLDto, 0, len(requestBody))
 	correlations := make(map[string]string)
 
 	for _, dto := range requestBody {
-		saveDtos = append(saveDtos, domain.SaveShortUrlDto{
+		saveDtos = append(saveDtos, domain.SaveShortURLDto{
 			OriginalURL: dto.OriginalURL,
 			ShortURL:    h.stringGenerator.GenerateRandom(),
 		})
@@ -166,7 +166,7 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shortURL := h.stringGenerator.GenerateRandom()
-	shortenedURL, err := h.urlStorage.SaveURL(r.Context(), domain.SaveShortUrlDto{
+	shortenedURL, err := h.urlStorage.SaveURL(r.Context(), domain.SaveShortURLDto{
 		OriginalURL: string(body),
 		ShortURL:    shortURL,
 	})
@@ -180,7 +180,7 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		shortURL = h.stringGenerator.GenerateRandom()
-		shortenedURL, err = h.urlStorage.SaveURL(r.Context(), domain.SaveShortUrlDto{
+		shortenedURL, err = h.urlStorage.SaveURL(r.Context(), domain.SaveShortURLDto{
 			OriginalURL: string(body),
 			ShortURL:    shortURL,
 		})
