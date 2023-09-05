@@ -23,7 +23,7 @@ import (
 
 func TestShortURL(t *testing.T) {
 	appConfig := &config.AppConfig{}
-	urlStorage := storage.NewInMemoryStorage()
+	urlStorage, _ := storage.New(appConfig)
 
 	handler := NewShortenerHandler(appConfig, urlStorage)
 
@@ -96,7 +96,7 @@ func TestShortURL(t *testing.T) {
 
 func TestShortURLJSON(t *testing.T) {
 	appConfig := &config.AppConfig{}
-	urlStorage := storage.NewInMemoryStorage()
+	urlStorage, _ := storage.New(appConfig)
 
 	handler := NewShortenerHandler(appConfig, urlStorage)
 
@@ -184,7 +184,7 @@ func TestShortURLJSON(t *testing.T) {
 
 func TestShortBatchURL(t *testing.T) {
 	appConfig := &config.AppConfig{}
-	urlStorage := storage.NewInMemoryStorage()
+	urlStorage, _ := storage.New(appConfig)
 
 	handler := NewShortenerHandler(appConfig, urlStorage)
 
@@ -291,7 +291,7 @@ func TestShortBatchURL(t *testing.T) {
 
 func TestRedirectToURLByID(t *testing.T) {
 	appConfig := &config.AppConfig{}
-	urlStorage := storage.NewInMemoryStorage()
+	urlStorage, _ := storage.New(appConfig)
 	handler := NewShortenerHandler(appConfig, urlStorage)
 
 	type want struct {

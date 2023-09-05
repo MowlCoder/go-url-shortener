@@ -11,10 +11,9 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/handlers"
+	"github.com/MowlCoder/go-url-shortener/internal/app/logger"
 	"github.com/MowlCoder/go-url-shortener/internal/app/middlewares"
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
-
-	"github.com/MowlCoder/go-url-shortener/internal/app/logger"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/config"
 )
@@ -38,18 +37,10 @@ func main() {
 		panic(err)
 	}
 
-	var urlStorage handlers.URLStorage
+	urlStorage, err := storage.New(appConfig)
 
-	if appConfig.DatabaseDSN != "" {
-		urlStorage, err = storage.NewDatabaseStorage(appConfig.DatabaseDSN)
-
-		if err != nil {
-			panic(err)
-		}
-	} else if appConfig.FileStoragePath != "" {
-		urlStorage = storage.NewFileStorage(appConfig.FileStoragePath)
-	} else {
-		urlStorage = storage.NewInMemoryStorage()
+	if err != nil {
+		panic(err)
 	}
 
 	shortenerHandler := handlers.NewShortenerHandler(appConfig, urlStorage)

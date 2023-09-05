@@ -61,6 +61,8 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 	shortenedURL, err := h.urlStorage.SaveURL(r.Context(), requestBody.URL)
 
 	if err != nil {
+		fmt.Println(err)
+
 		if errors.Is(err, storage.ErrRowConflict) {
 			SendJSONResponse(w, http.StatusConflict, dtos.ShortURLResponse{
 				Result: fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL),
@@ -104,9 +106,9 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 		correlations[dto.OriginalURL] = dto.CorrelationID
 	}
 
-	shortenedURLs, storageErr := h.urlStorage.SaveSeveralURL(r.Context(), urls)
+	shortenedURLs, err := h.urlStorage.SaveSeveralURL(r.Context(), urls)
 
-	if storageErr != nil && !errors.Is(storageErr, storage.ErrRowConflict) {
+	if err != nil {
 		SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}

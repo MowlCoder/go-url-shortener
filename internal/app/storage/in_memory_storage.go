@@ -14,12 +14,12 @@ type InMemoryStorage struct {
 	structure map[string]models.ShortenedURL
 }
 
-func NewInMemoryStorage() *InMemoryStorage {
+func NewInMemoryStorage() (*InMemoryStorage, error) {
 	storage := InMemoryStorage{
 		structure: make(map[string]models.ShortenedURL),
 	}
 
-	return &storage
+	return &storage, nil
 }
 
 func (storage *InMemoryStorage) GetOriginalURLByShortURL(ctx context.Context, shortURL string) (string, error) {

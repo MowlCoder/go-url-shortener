@@ -127,13 +127,7 @@ func (storage *DatabaseStorage) Ping(ctx context.Context) error {
 }
 
 func (storage *DatabaseStorage) generateUniqueShortSlug(ctx context.Context) string {
-	shortURL := ""
-
-	for original := "original"; original != ""; original, _ = storage.GetOriginalURLByShortURL(ctx, shortURL) {
-		shortURL = util.Base62Encode(rand.Uint64())
-	}
-
-	return shortURL
+	return util.Base62Encode(rand.Uint64())
 }
 
 func (storage *DatabaseStorage) bootstrap() error {

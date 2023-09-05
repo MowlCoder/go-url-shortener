@@ -4,3 +4,6 @@ CREATE TABLE IF NOT EXISTS shorten_url (
   original_url TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS short_url_idx ON shorten_url (short_url)
+CREATE UNIQUE INDEX IF NOT EXISTS original_url_idx ON shorten_url (original_url)

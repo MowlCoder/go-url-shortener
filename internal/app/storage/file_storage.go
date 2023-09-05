@@ -17,7 +17,7 @@ type FileStorage struct {
 	savingChanges bool
 }
 
-func NewFileStorage(fileStoragePath string) *FileStorage {
+func NewFileStorage(fileStoragePath string) (*FileStorage, error) {
 	storage := FileStorage{
 		structure:     make(map[string]models.ShortenedURL),
 		savingChanges: false,
@@ -34,7 +34,7 @@ func NewFileStorage(fileStoragePath string) *FileStorage {
 		storage.parseFromFile()
 	}
 
-	return &storage
+	return &storage, nil
 }
 
 func (storage *FileStorage) GetOriginalURLByShortURL(ctx context.Context, shortURL string) (string, error) {
