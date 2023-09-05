@@ -101,6 +101,18 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 	row.Scan(&count)
 	fmt.Println(count)
 
+	row = tx.QueryRowContext(ctx, "SELECT id, short_url, original_url FROM shorten_url")
+
+	if row.Err() != nil {
+		return nil, row.Err()
+	}
+
+	testURL := models.ShortenedURL{}
+
+	row.Scan(&testURL.ID, &testURL.ShortURL, &testURL.OriginalURL)
+
+	fmt.Println(testURL)
+
 	sqlStr := "INSERT INTO shorten_url (short_url, original_url, created_at) VALUES "
 	vals := []interface{}{}
 
