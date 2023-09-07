@@ -31,19 +31,16 @@ func main() {
 		Level:        logger.LogInfo,
 		IsProduction: appConfig.AppEnvironment == config.AppProductionEnv,
 	})
-
 	if err != nil {
 		panic(err)
 	}
 
 	gzipWriter, err := gzip.NewWriterLevel(nil, gzip.BestSpeed)
-
 	if err != nil {
 		panic(err)
 	}
 
 	urlStorage, err := storage.New(appConfig)
-
 	if err != nil {
 		panic(err)
 	}

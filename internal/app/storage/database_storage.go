@@ -1,11 +1,15 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/domain"
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
@@ -62,6 +66,12 @@ func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShor
 	)
 
 	if row.Err() != nil {
+		var pgErr *pgconn.PgError
+
+		if errors.As(row.Err(), &pgErr) && pgErr.Code == PgUniqueIndexErrorCode {
+			return nil, ErrShortURLConflict
+		}
+
 		return nil, row.Err()
 	}
 
@@ -89,20 +99,25 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 
 	originalUrls := make([]string, 0, len(dtos))
 
-	sqlStr := "INSERT INTO shorten_url (short_url, original_url, created_at) VALUES "
+	sqlStmtBuffer := bytes.Buffer{}
+	sqlStmtBuffer.WriteString("INSERT INTO shorten_url (short_url, original_url, created_at) VALUES ")
+
 	vals := []interface{}{}
 
 	for idx, dto := range dtos {
-		sqlStr += fmt.Sprintf("($%d, $%d, $%d),", idx*3+1, idx*3+2, idx*3+3)
-		vals = append(vals, dto.ShortURL, dto.OriginalURL, time.Now())
+		sqlStmtBuffer.WriteString(fmt.Sprintf("($%d, $%d, $%d)", idx*3+1, idx*3+2, idx*3+3))
 
+		if idx+1 != len(dtos) {
+			sqlStmtBuffer.WriteString(",")
+		}
+
+		vals = append(vals, dto.ShortURL, dto.OriginalURL, time.Now())
 		originalUrls = append(originalUrls, dto.OriginalURL)
 	}
 
-	sqlStr = sqlStr[0 : len(sqlStr)-1]
-	sqlStr += " ON CONFLICT (original_url) DO NOTHING"
+	sqlStmtBuffer.WriteString(" ON CONFLICT (original_url) DO NOTHING")
 
-	_, err = tx.ExecContext(ctx, sqlStr, vals...)
+	_, err = tx.ExecContext(ctx, sqlStmtBuffer.String(), vals...)
 
 	if err != nil {
 		return nil, err

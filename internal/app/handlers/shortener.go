@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/domain"
 	"github.com/MowlCoder/go-url-shortener/internal/app/handlers/dtos"
@@ -80,9 +79,7 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var pgErr *pgconn.PgError
-
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+	if errors.Is(err, storage.ErrShortURLConflict) {
 		shortURL = h.stringGenerator.GenerateRandom()
 		shortenedURL, err = h.urlStorage.SaveURL(r.Context(), domain.SaveShortURLDto{
 			OriginalURL: requestBody.URL,
@@ -175,9 +172,7 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var pgErr *pgconn.PgError
-
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+	if errors.Is(err, storage.ErrShortURLConflict) {
 		shortURL = h.stringGenerator.GenerateRandom()
 		shortenedURL, err = h.urlStorage.SaveURL(r.Context(), domain.SaveShortURLDto{
 			OriginalURL: string(body),
