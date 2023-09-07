@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/handlers/dtos"
+	"github.com/MowlCoder/go-url-shortener/internal/app/services"
 
 	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
 
@@ -23,9 +24,10 @@ import (
 
 func TestShortURL(t *testing.T) {
 	appConfig := &config.AppConfig{}
-	urlStorage := storage.NewInMemoryStorage()
+	urlStorage, _ := storage.New(appConfig)
+	stringsGeneratorService := services.NewStringGenerator()
 
-	handler := NewShortenerHandler(appConfig, urlStorage)
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
 
 	type want struct {
 		code        int
@@ -70,13 +72,36 @@ func TestShortURL(t *testing.T) {
 			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
 		})
 	}
+
+	t.Run("Create short link twice", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://practicum.yandex.ru/123"))
+		w := httptest.NewRecorder()
+
+		handler.ShortURL(w, request)
+
+		res := w.Result()
+
+		assert.Equal(t, 201, res.StatusCode)
+		defer res.Body.Close()
+		assert.Equal(t, "text/plain", res.Header.Get("Content-Type"))
+
+		request = httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://practicum.yandex.ru/123"))
+		w = httptest.NewRecorder()
+		handler.ShortURL(w, request)
+
+		res = w.Result()
+		assert.Equal(t, 409, res.StatusCode)
+		defer res.Body.Close()
+		assert.Equal(t, "text/plain", res.Header.Get("Content-Type"))
+	})
 }
 
 func TestShortURLJSON(t *testing.T) {
 	appConfig := &config.AppConfig{}
-	urlStorage := storage.NewInMemoryStorage()
+	urlStorage, _ := storage.New(appConfig)
+	stringsGeneratorService := services.NewStringGenerator()
 
-	handler := NewShortenerHandler(appConfig, urlStorage)
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
 
 	type want struct {
 		code        int
@@ -130,12 +155,150 @@ func TestShortURLJSON(t *testing.T) {
 			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
 		})
 	}
+
+	t.Run("Create short link twice", func(t *testing.T) {
+		jsonBody, err := json.Marshal(dtos.ShortURLDto{
+			URL: "https://vk.com/123",
+		})
+
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(jsonBody))
+		w := httptest.NewRecorder()
+
+		handler.ShortURLJSON(w, request)
+
+		res := w.Result()
+
+		assert.Equal(t, 201, res.StatusCode)
+		defer res.Body.Close()
+		assert.Equal(t, "application/json", res.Header.Get("Content-Type"))
+
+		request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(jsonBody))
+		w = httptest.NewRecorder()
+		handler.ShortURLJSON(w, request)
+
+		res = w.Result()
+		assert.Equal(t, 409, res.StatusCode)
+		defer res.Body.Close()
+		assert.Equal(t, "application/json", res.Header.Get("Content-Type"))
+	})
+}
+
+func TestShortBatchURL(t *testing.T) {
+	appConfig := &config.AppConfig{}
+	urlStorage, _ := storage.New(appConfig)
+	stringsGeneratorService := services.NewStringGenerator()
+
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
+
+	type want struct {
+		code        int
+		contentType string
+	}
+
+	tests := []struct {
+		name string
+		body []dtos.ShortBatchURLDto
+		want want
+	}{
+		{
+			name: "Create short links (valid)",
+			body: []dtos.ShortBatchURLDto{
+				{
+					OriginalURL:   "https://youtube.com/1",
+					CorrelationID: "123",
+				},
+				{
+					OriginalURL:   "https://youtube.com/2",
+					CorrelationID: "123456",
+				},
+				{
+					OriginalURL:   "https://youtube.com/3",
+					CorrelationID: "1236789",
+				},
+			},
+			want: want{
+				code:        201,
+				contentType: "application/json",
+			},
+		},
+		{
+			name: "Create short link (invalid body)",
+			body: nil,
+			want: want{
+				code:        400,
+				contentType: "",
+			},
+		},
+		{
+			name: "Create short link (valid empty body)",
+			body: []dtos.ShortBatchURLDto{},
+			want: want{
+				code:        400,
+				contentType: "",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			jsonBody, err := json.Marshal(test.body)
+
+			require.NoError(t, err)
+
+			request := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", bytes.NewReader(jsonBody))
+			request.Header.Set("content-type", "application/json")
+			w := httptest.NewRecorder()
+
+			handler.ShortBatchURL(w, request)
+
+			res := w.Result()
+
+			assert.Equal(t, test.want.code, res.StatusCode)
+			defer res.Body.Close()
+
+			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
+
+			if test.want.code == 201 {
+				response, err := io.ReadAll(res.Body)
+				require.NoError(t, err)
+
+				var responseBody []dtos.ShortBatchURLResponse
+				require.NoError(t, json.Unmarshal(response, &responseBody))
+
+				assert.Equal(t, len(test.body), len(responseBody))
+
+				allFound := true
+
+				for _, dto := range test.body {
+					isFound := false
+
+					for _, resDto := range responseBody {
+						if dto.CorrelationID == resDto.CorrelationID {
+							isFound = true
+							break
+						}
+					}
+
+					if !isFound {
+						allFound = false
+						break
+					}
+				}
+
+				assert.Equal(t, true, allFound)
+			}
+		})
+	}
 }
 
 func TestRedirectToURLByID(t *testing.T) {
 	appConfig := &config.AppConfig{}
-	urlStorage := storage.NewInMemoryStorage()
-	handler := NewShortenerHandler(appConfig, urlStorage)
+	urlStorage, _ := storage.New(appConfig)
+	stringsGeneratorService := services.NewStringGenerator()
+
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
 
 	type want struct {
 		code int

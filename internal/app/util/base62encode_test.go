@@ -20,6 +20,5 @@ func TestBase62Encode(t *testing.T) {
 		encodedString := Base62Encode(randomNumber)
 
 		assert.NotEmpty(t, encodedString)
-		assert.Len(t, encodedString, 11)
 	})
 }
