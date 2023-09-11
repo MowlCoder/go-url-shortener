@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/joho/godotenv"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
@@ -22,6 +23,11 @@ import (
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
+
+	err := godotenv.Load(".env")
+	if err != nil {
+		panic(err)
+	}
 
 	appConfig := &config.AppConfig{}
 	appConfig.ParseFlags()
