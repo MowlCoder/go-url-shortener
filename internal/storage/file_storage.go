@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/MowlCoder/go-url-shortener/internal/app/domain"
-	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
+	"github.com/MowlCoder/go-url-shortener/internal/domain"
+	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
 )
 
 type FileStorage struct {

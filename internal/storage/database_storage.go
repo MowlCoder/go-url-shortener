@@ -11,8 +11,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/MowlCoder/go-url-shortener/internal/app/domain"
-	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
+	"github.com/MowlCoder/go-url-shortener/internal/domain"
+	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
 )
 
 type DatabaseStorage struct {

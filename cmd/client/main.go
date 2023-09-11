@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/MowlCoder/go-url-shortener/internal/app/config"
+	"github.com/MowlCoder/go-url-shortener/internal/config"
 )
 
 func main() {

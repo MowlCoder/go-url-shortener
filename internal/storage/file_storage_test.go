@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/MowlCoder/go-url-shortener/internal/app/domain"
-	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
-
 	"github.com/stretchr/testify/assert"
+
+	"github.com/MowlCoder/go-url-shortener/internal/domain"
+	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
 )
 
 func TestFileStorage_SaveURL(t *testing.T) {

@@ -12,13 +12,12 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/MowlCoder/go-url-shortener/internal/app/handlers"
-	"github.com/MowlCoder/go-url-shortener/internal/app/logger"
-	"github.com/MowlCoder/go-url-shortener/internal/app/middlewares"
-	"github.com/MowlCoder/go-url-shortener/internal/app/services"
-	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
-
-	"github.com/MowlCoder/go-url-shortener/internal/app/config"
+	"github.com/MowlCoder/go-url-shortener/internal/config"
+	"github.com/MowlCoder/go-url-shortener/internal/handlers"
+	"github.com/MowlCoder/go-url-shortener/internal/logger"
+	middlewares2 "github.com/MowlCoder/go-url-shortener/internal/middlewares"
+	"github.com/MowlCoder/go-url-shortener/internal/services"
+	"github.com/MowlCoder/go-url-shortener/internal/storage"
 )
 
 func main() {
@@ -53,9 +52,9 @@ func main() {
 
 	mux.Use(middleware.RealIP)
 	mux.Use(middleware.Recoverer)
-	mux.Use(middlewares.NewCompressMiddleware(gzipWriter).Handler)
+	mux.Use(middlewares2.NewCompressMiddleware(gzipWriter).Handler)
 	mux.Use(func(handler http.Handler) http.Handler {
-		return middlewares.WithLogging(handler, customLogger)
+		return middlewares2.WithLogging(handler, customLogger)
 	})
 
 	mux.Post("/api/shorten/batch", shortenerHandler.ShortBatchURL)

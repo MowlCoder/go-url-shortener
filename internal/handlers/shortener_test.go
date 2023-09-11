@@ -10,16 +10,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MowlCoder/go-url-shortener/internal/app/handlers/dtos"
-	"github.com/MowlCoder/go-url-shortener/internal/app/services"
-
-	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
-
-	"github.com/MowlCoder/go-url-shortener/internal/app/config"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/MowlCoder/go-url-shortener/internal/config"
+	"github.com/MowlCoder/go-url-shortener/internal/handlers/dtos"
+	"github.com/MowlCoder/go-url-shortener/internal/services"
+	"github.com/MowlCoder/go-url-shortener/internal/storage"
 )
 
 func TestShortURL(t *testing.T) {

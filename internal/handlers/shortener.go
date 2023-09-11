@@ -10,12 +10,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/MowlCoder/go-url-shortener/internal/app/domain"
-	"github.com/MowlCoder/go-url-shortener/internal/app/handlers/dtos"
-	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
-	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
-
-	"github.com/MowlCoder/go-url-shortener/internal/app/config"
+	"github.com/MowlCoder/go-url-shortener/internal/config"
+	"github.com/MowlCoder/go-url-shortener/internal/domain"
+	"github.com/MowlCoder/go-url-shortener/internal/handlers/dtos"
+	"github.com/MowlCoder/go-url-shortener/internal/storage"
+	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
 )
 
 type URLStorage interface {

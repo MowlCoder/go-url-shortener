@@ -3,7 +3,7 @@ package services
 import (
 	"math/rand"
 
-	"github.com/MowlCoder/go-url-shortener/internal/app/util"
+	"github.com/MowlCoder/go-url-shortener/internal/util"
 )
 
 type StringGenerator struct {
