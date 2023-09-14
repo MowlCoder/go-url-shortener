@@ -20,7 +20,7 @@ func GenerateToken(userID string) (string, error) {
 		UserID: userID,
 	})
 
-	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	tokenString, err := token.SignedString([]byte(getJWTSecretKey()))
 
 	if err != nil {
 		return "", err
@@ -32,7 +32,7 @@ func GenerateToken(userID string) (string, error) {
 func ParseToken(tokenString string) (*Claims, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("JWT_SECRET")), nil
+		return []byte(getJWTSecretKey()), nil
 	})
 
 	if err != nil {
@@ -44,4 +44,14 @@ func ParseToken(tokenString string) (*Claims, error) {
 	}
 
 	return claims, nil
+}
+
+func getJWTSecretKey() string {
+	key, ok := os.LookupEnv("JWT_SECRET")
+
+	if !ok {
+		return "secret"
+	}
+
+	return key
 }
