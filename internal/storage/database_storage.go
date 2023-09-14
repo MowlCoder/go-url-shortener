@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 
@@ -84,11 +83,11 @@ func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShor
 	row := storage.db.QueryRowContext(
 		ctx,
 		`
-			INSERT INTO shorten_url (short_url, original_url, user_id, created_at) VALUES ($1, $2, $3, $4)
+			INSERT INTO shorten_url (short_url, original_url, user_id) VALUES ($1, $2, $3)
 			ON CONFLICT (original_url) DO UPDATE SET original_url = EXCLUDED.original_url
 			RETURNING id, short_url, user_id, original_url;
 		`,
-		dto.ShortURL, dto.OriginalURL, dto.UserID, time.Now(),
+		dto.ShortURL, dto.OriginalURL, dto.UserID,
 	)
 
 	if row.Err() != nil {
@@ -126,18 +125,18 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 	originalUrls := make([]string, 0, len(dtos))
 
 	sqlStmtBuffer := bytes.Buffer{}
-	sqlStmtBuffer.WriteString("INSERT INTO shorten_url (short_url, original_url, user_id, created_at) VALUES ")
+	sqlStmtBuffer.WriteString("INSERT INTO shorten_url (short_url, original_url, user_id) VALUES ")
 
 	vals := []interface{}{}
 
 	for idx, dto := range dtos {
-		sqlStmtBuffer.WriteString(fmt.Sprintf("($%d, $%d, $%d, $%d)", idx*4+1, idx*4+2, idx*4+3, idx*4+4))
+		sqlStmtBuffer.WriteString(fmt.Sprintf("($%d, $%d, $%d)", idx*4+1, idx*4+2, idx*4+3))
 
 		if idx+1 != len(dtos) {
 			sqlStmtBuffer.WriteString(",")
 		}
 
-		vals = append(vals, dto.ShortURL, dto.OriginalURL, dto.UserID, time.Now())
+		vals = append(vals, dto.ShortURL, dto.OriginalURL, dto.UserID)
 		originalUrls = append(originalUrls, dto.OriginalURL)
 	}
 
@@ -201,7 +200,7 @@ func (storage *DatabaseStorage) bootstrap() error {
 	  		short_url VARCHAR ( 20 ) UNIQUE NOT NULL,
 	  		original_url TEXT NOT NULL,
 	  		user_id VARCHAR( 100 ) NOT NULL,
-	  		created_at TIMESTAMP NOT NULL
+	  		created_at TIMESTAMP NOT NULL DEFAULT NOW()
 		)
 	`)
 	tx.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS short_url_idx ON shorten_url (short_url)`)

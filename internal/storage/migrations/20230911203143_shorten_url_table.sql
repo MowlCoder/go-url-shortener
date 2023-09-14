@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS shorten_url (
    short_url VARCHAR ( 20 ) UNIQUE NOT NULL,
    original_url TEXT NOT NULL,
    user_id VARCHAR( 100 ) NOT NULL,
-   created_at TIMESTAMP NOT NULL
+   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS short_url_idx ON shorten_url (short_url);
