@@ -16,7 +16,7 @@ import (
 	"github.com/MowlCoder/go-url-shortener/internal/config"
 	"github.com/MowlCoder/go-url-shortener/internal/handlers"
 	"github.com/MowlCoder/go-url-shortener/internal/logger"
-	middlewares2 "github.com/MowlCoder/go-url-shortener/internal/middlewares"
+	customMiddlewares "github.com/MowlCoder/go-url-shortener/internal/middlewares"
 	"github.com/MowlCoder/go-url-shortener/internal/services"
 	"github.com/MowlCoder/go-url-shortener/internal/storage"
 )
@@ -51,6 +51,7 @@ func main() {
 	}
 
 	stringGeneratorService := services.NewStringGenerator()
+	userService := services.NewUserService()
 
 	shortenerHandler := handlers.NewShortenerHandler(appConfig, urlStorage, stringGeneratorService)
 
@@ -58,14 +59,18 @@ func main() {
 
 	mux.Use(middleware.RealIP)
 	mux.Use(middleware.Recoverer)
-	mux.Use(middlewares2.NewCompressMiddleware(gzipWriter).Handler)
+	mux.Use(customMiddlewares.NewCompressMiddleware(gzipWriter).Handler)
 	mux.Use(func(handler http.Handler) http.Handler {
-		return middlewares2.WithLogging(handler, customLogger)
+		return customMiddlewares.WithLogging(handler, customLogger)
+	})
+	mux.Use(func(handler http.Handler) http.Handler {
+		return customMiddlewares.AuthMiddleware(handler, userService)
 	})
 
 	mux.Post("/api/shorten/batch", shortenerHandler.ShortBatchURL)
 	mux.Post("/api/shorten", shortenerHandler.ShortURLJSON)
 	mux.Post("/", shortenerHandler.ShortURL)
+	mux.Get("/api/user/urls", shortenerHandler.GetMyURLs)
 	mux.Get("/ping", shortenerHandler.Ping)
 	mux.Get("/{id}", shortenerHandler.RedirectToURLByID)
 

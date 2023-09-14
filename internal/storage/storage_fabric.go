@@ -12,6 +12,7 @@ type URLStorage interface {
 	SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]models.ShortenedURL, error)
 	SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error)
 	GetOriginalURLByShortURL(ctx context.Context, shortURL string) (string, error)
+	GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error)
 	Ping(ctx context.Context) error
 }
 

@@ -58,9 +58,10 @@ func TestShortURL(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, "/", test.body)
+			ctx := context.WithValue(request.Context(), "user_id", "1")
 			w := httptest.NewRecorder()
 
-			handler.ShortURL(w, request)
+			handler.ShortURL(w, request.WithContext(ctx))
 
 			res := w.Result()
 
@@ -73,9 +74,10 @@ func TestShortURL(t *testing.T) {
 
 	t.Run("Create short link twice", func(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://practicum.yandex.ru/123"))
+		ctx := context.WithValue(request.Context(), "user_id", "1")
 		w := httptest.NewRecorder()
 
-		handler.ShortURL(w, request)
+		handler.ShortURL(w, request.WithContext(ctx))
 
 		res := w.Result()
 
@@ -85,7 +87,7 @@ func TestShortURL(t *testing.T) {
 
 		request = httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://practicum.yandex.ru/123"))
 		w = httptest.NewRecorder()
-		handler.ShortURL(w, request)
+		handler.ShortURL(w, request.WithContext(ctx))
 
 		res = w.Result()
 		assert.Equal(t, 409, res.StatusCode)
@@ -140,10 +142,11 @@ func TestShortURLJSON(t *testing.T) {
 			require.NoError(t, err)
 
 			request := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewReader(jsonBody))
+			ctx := context.WithValue(request.Context(), "user_id", "1")
 			request.Header.Set("content-type", "application/json")
 			w := httptest.NewRecorder()
 
-			handler.ShortURLJSON(w, request)
+			handler.ShortURLJSON(w, request.WithContext(ctx))
 
 			res := w.Result()
 
@@ -162,9 +165,10 @@ func TestShortURLJSON(t *testing.T) {
 		require.NoError(t, err)
 
 		request := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(jsonBody))
+		ctx := context.WithValue(request.Context(), "user_id", "1")
 		w := httptest.NewRecorder()
 
-		handler.ShortURLJSON(w, request)
+		handler.ShortURLJSON(w, request.WithContext(ctx))
 
 		res := w.Result()
 
@@ -174,7 +178,7 @@ func TestShortURLJSON(t *testing.T) {
 
 		request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(jsonBody))
 		w = httptest.NewRecorder()
-		handler.ShortURLJSON(w, request)
+		handler.ShortURLJSON(w, request.WithContext(ctx))
 
 		res = w.Result()
 		assert.Equal(t, 409, res.StatusCode)
@@ -246,10 +250,11 @@ func TestShortBatchURL(t *testing.T) {
 			require.NoError(t, err)
 
 			request := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", bytes.NewReader(jsonBody))
+			ctx := context.WithValue(request.Context(), "user_id", "1")
 			request.Header.Set("content-type", "application/json")
 			w := httptest.NewRecorder()
 
-			handler.ShortBatchURL(w, request)
+			handler.ShortBatchURL(w, request.WithContext(ctx))
 
 			res := w.Result()
 
@@ -329,8 +334,9 @@ func TestRedirectToURLByID(t *testing.T) {
 
 			if test.preCreateLink {
 				request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://practicum.yandex.ru"))
+				ctx := context.WithValue(request.Context(), "user_id", "1")
 				w := httptest.NewRecorder()
-				handler.ShortURL(w, request)
+				handler.ShortURL(w, request.WithContext(ctx))
 
 				res := w.Result()
 

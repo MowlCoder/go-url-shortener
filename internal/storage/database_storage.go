@@ -54,15 +54,41 @@ func (storage *DatabaseStorage) GetOriginalURLByShortURL(ctx context.Context, sh
 	return originalURL, nil
 }
 
+func (storage *DatabaseStorage) GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error) {
+	urls := make([]models.ShortenedURL, 0)
+
+	rows, err := storage.db.QueryContext(ctx, "SELECT id, short_url, user_id, original_url FROM shorten_url WHERE user_id = $1", userID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	for rows.Next() {
+		shortenedURL := models.ShortenedURL{}
+
+		if err := rows.Scan(&shortenedURL.ID, &shortenedURL.ShortURL, &shortenedURL.UserID, &shortenedURL.OriginalURL); err != nil {
+			return nil, err
+		}
+
+		urls = append(urls, shortenedURL)
+	}
+
+	return urls, nil
+}
+
 func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error) {
 	row := storage.db.QueryRowContext(
 		ctx,
 		`
-			INSERT INTO shorten_url (short_url, original_url, created_at) VALUES ($1, $2, $3)
+			INSERT INTO shorten_url (short_url, original_url, user_id, created_at) VALUES ($1, $2, $3, $4)
 			ON CONFLICT (original_url) DO UPDATE SET original_url = EXCLUDED.original_url
-			RETURNING id, short_url, original_url;
+			RETURNING id, short_url, user_id, original_url;
 		`,
-		dto.ShortURL, dto.OriginalURL, time.Now(),
+		dto.ShortURL, dto.OriginalURL, dto.UserID, time.Now(),
 	)
 
 	if row.Err() != nil {
@@ -77,7 +103,7 @@ func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShor
 
 	shortenedURL := models.ShortenedURL{}
 
-	if err := row.Scan(&shortenedURL.ID, &shortenedURL.ShortURL, &shortenedURL.OriginalURL); err != nil {
+	if err := row.Scan(&shortenedURL.ID, &shortenedURL.ShortURL, &shortenedURL.UserID, &shortenedURL.OriginalURL); err != nil {
 		return nil, err
 	}
 
@@ -100,18 +126,18 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 	originalUrls := make([]string, 0, len(dtos))
 
 	sqlStmtBuffer := bytes.Buffer{}
-	sqlStmtBuffer.WriteString("INSERT INTO shorten_url (short_url, original_url, created_at) VALUES ")
+	sqlStmtBuffer.WriteString("INSERT INTO shorten_url (short_url, original_url, user_id, created_at) VALUES ")
 
 	vals := []interface{}{}
 
 	for idx, dto := range dtos {
-		sqlStmtBuffer.WriteString(fmt.Sprintf("($%d, $%d, $%d)", idx*3+1, idx*3+2, idx*3+3))
+		sqlStmtBuffer.WriteString(fmt.Sprintf("($%d, $%d, $%d, $%d)", idx*4+1, idx*4+2, idx*4+3, idx*4+4))
 
 		if idx+1 != len(dtos) {
 			sqlStmtBuffer.WriteString(",")
 		}
 
-		vals = append(vals, dto.ShortURL, dto.OriginalURL, time.Now())
+		vals = append(vals, dto.ShortURL, dto.OriginalURL, dto.UserID, time.Now())
 		originalUrls = append(originalUrls, dto.OriginalURL)
 	}
 
@@ -125,7 +151,7 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 
 	rows, err := tx.QueryContext(
 		ctx,
-		"SELECT id, short_url, original_url FROM shorten_url WHERE original_url = ANY($1::text[])",
+		"SELECT id, short_url, user_id, original_url FROM shorten_url WHERE original_url = ANY($1::text[])",
 		"{"+strings.Join(originalUrls, ",")+"}",
 	)
 
@@ -142,7 +168,7 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 	for rows.Next() {
 		shortenedURL := models.ShortenedURL{}
 
-		if err := rows.Scan(&shortenedURL.ID, &shortenedURL.ShortURL, &shortenedURL.OriginalURL); err != nil {
+		if err := rows.Scan(&shortenedURL.ID, &shortenedURL.ShortURL, &shortenedURL.UserID, &shortenedURL.OriginalURL); err != nil {
 			return nil, err
 		}
 
@@ -174,6 +200,7 @@ func (storage *DatabaseStorage) bootstrap() error {
 	  		id serial PRIMARY KEY,
 	  		short_url VARCHAR ( 20 ) UNIQUE NOT NULL,
 	  		original_url TEXT NOT NULL,
+	  		user_id INTEGER NOT NULL,
 	  		created_at TIMESTAMP NOT NULL
 		)
 	`)

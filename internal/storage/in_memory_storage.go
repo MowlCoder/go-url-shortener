@@ -28,6 +28,18 @@ func (storage *InMemoryStorage) GetOriginalURLByShortURL(ctx context.Context, sh
 	return "", errorURLNotFound
 }
 
+func (storage *InMemoryStorage) GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error) {
+	urls := make([]models.ShortenedURL, 0)
+
+	for _, value := range storage.structure {
+		if value.UserID == userID {
+			urls = append(urls, value)
+		}
+	}
+
+	return urls, nil
+}
+
 func (storage *InMemoryStorage) FindByOriginalURL(ctx context.Context, originalURL string) (models.ShortenedURL, error) {
 	for _, value := range storage.structure {
 		if value.OriginalURL == originalURL {

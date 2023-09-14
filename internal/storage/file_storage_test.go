@@ -17,6 +17,7 @@ func TestFileStorage_SaveURL(t *testing.T) {
 		shortenedURL, err := storage.SaveURL(context.Background(), domain.SaveShortURLDto{
 			OriginalURL: urlToAdd,
 			ShortURL:    "short-url",
+			UserID:      "1",
 		})
 
 		if assert.NoError(t, err) {
@@ -32,6 +33,7 @@ func TestFileStorage_SaveURL(t *testing.T) {
 		shortenedURL, err := storage.SaveURL(context.Background(), domain.SaveShortURLDto{
 			OriginalURL: urlToAdd,
 			ShortURL:    "short-url-1",
+			UserID:      "1",
 		})
 
 		if assert.NoError(t, err) {
@@ -43,6 +45,7 @@ func TestFileStorage_SaveURL(t *testing.T) {
 		secondShortenedURL, err := storage.SaveURL(context.Background(), domain.SaveShortURLDto{
 			OriginalURL: urlToAdd,
 			ShortURL:    "short-url-2",
+			UserID:      "1",
 		})
 
 		assert.ErrorIs(t, err, ErrRowConflict)
