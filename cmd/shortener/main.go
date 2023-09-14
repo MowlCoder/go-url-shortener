@@ -52,6 +52,7 @@ func main() {
 	}
 
 	stringGeneratorService := services.NewStringGenerator()
+	userService := services.NewUserService()
 
 	shortenerHandler := handlers.NewShortenerHandler(appConfig, urlStorage, stringGeneratorService)
 
@@ -62,6 +63,9 @@ func main() {
 	mux.Use(customMiddlewares.NewCompressMiddleware(gzipWriter).Handler)
 	mux.Use(func(handler http.Handler) http.Handler {
 		return customMiddlewares.WithLogging(handler, customLogger)
+	})
+	mux.Use(func(handler http.Handler) http.Handler {
+		return customMiddlewares.AuthMiddleware(handler, userService)
 	})
 
 	mux.Post("/api/shorten/batch", shortenerHandler.ShortBatchURL)
