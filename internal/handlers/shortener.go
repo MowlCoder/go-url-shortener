@@ -186,7 +186,7 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 		shortenedURL, err = h.urlStorage.SaveURL(r.Context(), domain.SaveShortURLDto{
 			OriginalURL: string(body),
 			ShortURL:    shortURL,
-			UserID:      "1",
+			UserID:      userID,
 		})
 	}
 
