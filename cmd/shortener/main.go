@@ -3,6 +3,7 @@ package main
 import (
 	"compress/gzip"
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"time"
@@ -26,7 +27,7 @@ func main() {
 
 	err := godotenv.Load(".env")
 	if err != nil {
-		panic(err)
+		log.Println("No .env provided")
 	}
 
 	appConfig := &config.AppConfig{}
