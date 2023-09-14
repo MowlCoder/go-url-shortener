@@ -130,7 +130,7 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 	vals := []interface{}{}
 
 	for idx, dto := range dtos {
-		sqlStmtBuffer.WriteString(fmt.Sprintf("($%d, $%d, $%d)", idx*4+1, idx*4+2, idx*4+3))
+		sqlStmtBuffer.WriteString(fmt.Sprintf("($%d, $%d, $%d)", idx*3+1, idx*3+2, idx*3+3))
 
 		if idx+1 != len(dtos) {
 			sqlStmtBuffer.WriteString(",")
