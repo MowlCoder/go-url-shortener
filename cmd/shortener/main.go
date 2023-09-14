@@ -76,6 +76,7 @@ func main() {
 	mux.Get("/{id}", shortenerHandler.RedirectToURLByID)
 
 	fmt.Println("URL Shortener server is running on", appConfig.BaseHTTPAddr)
+	fmt.Println("Config:", appConfig)
 
 	if err := http.ListenAndServe(appConfig.BaseHTTPAddr, mux); err != nil {
 		panic(err)
