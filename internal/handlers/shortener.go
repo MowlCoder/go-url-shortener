@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/MowlCoder/go-url-shortener/internal/config"
+	contextUtil "github.com/MowlCoder/go-url-shortener/internal/context"
 	"github.com/MowlCoder/go-url-shortener/internal/domain"
 	"github.com/MowlCoder/go-url-shortener/internal/handlers/dtos"
 	"github.com/MowlCoder/go-url-shortener/internal/storage"
@@ -49,7 +50,7 @@ func NewShortenerHandler(
 }
 
 func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID := contextUtil.GetUserIDFromContext(r.Context())
 	requestBody := dtos.ShortURLDto{}
 	rawBody, err := io.ReadAll(r.Body)
 
@@ -102,7 +103,7 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID := contextUtil.GetUserIDFromContext(r.Context())
 	requestBody := make([]dtos.ShortBatchURLDto, 0)
 	rawBody, err := io.ReadAll(r.Body)
 
@@ -156,7 +157,7 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID := contextUtil.GetUserIDFromContext(r.Context())
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -199,7 +200,7 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ShortenerHandler) GetMyURLs(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID := contextUtil.GetUserIDFromContext(r.Context())
 	urls, err := h.urlStorage.GetURLsByUserID(r.Context(), userID)
 
 	if err != nil {

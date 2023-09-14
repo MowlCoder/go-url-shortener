@@ -15,7 +15,7 @@ type Claims struct {
 func GenerateToken(userID string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(time.Hour * 24)),
 		},
 		UserID: userID,
 	})

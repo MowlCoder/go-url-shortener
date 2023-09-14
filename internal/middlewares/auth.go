@@ -1,9 +1,9 @@
 package middlewares
 
 import (
-	"context"
 	"net/http"
 
+	"github.com/MowlCoder/go-url-shortener/internal/context"
 	"github.com/MowlCoder/go-url-shortener/internal/handlers"
 	"github.com/MowlCoder/go-url-shortener/internal/jwt"
 )
@@ -43,7 +43,7 @@ func AuthMiddleware(handler http.Handler, userService UserService) http.Handler 
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), "user_id", jwtClaim.UserID)
+		ctx := context.SetUserIDToContext(r.Context(), jwtClaim.UserID)
 
 		handler.ServeHTTP(w, r.WithContext(ctx))
 	})
