@@ -212,7 +212,16 @@ func (h *ShortenerHandler) GetMyURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	SendJSONResponse(w, 200, urls)
+	responseURLs := make([]dtos.UserURLsResponse, 0, len(urls))
+
+	for _, url := range urls {
+		responseURLs = append(responseURLs, dtos.UserURLsResponse{
+			ShortURL:    fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, url.ShortURL),
+			OriginalURL: url.OriginalURL,
+		})
+	}
+
+	SendJSONResponse(w, 200, responseURLs)
 }
 
 func (h *ShortenerHandler) RedirectToURLByID(w http.ResponseWriter, r *http.Request) {
