@@ -24,6 +24,8 @@ func TestAuthMiddleware(t *testing.T) {
 		res := w.Result()
 		isFoundTokenCookie := false
 
+		defer res.Body.Close()
+
 		for _, cookie := range res.Cookies() {
 			if cookie.Name == "token" {
 				isFoundTokenCookie = true
