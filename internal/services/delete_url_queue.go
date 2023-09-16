@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/MowlCoder/go-url-shortener/internal/domain"
 )
@@ -37,6 +38,7 @@ func (q *DeleteURLQueue) Start() {
 				continue
 			}
 
+			q.logger.Info(strings.Join(task.ShortURLs, ","))
 			q.logger.Info(fmt.Sprintf("Successfully deleted %d urls for user %s", len(task.ShortURLs), task.UserID))
 		}
 	}()
