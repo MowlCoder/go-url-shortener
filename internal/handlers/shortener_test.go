@@ -17,6 +17,7 @@ import (
 	"github.com/MowlCoder/go-url-shortener/internal/config"
 	contextUtil "github.com/MowlCoder/go-url-shortener/internal/context"
 	"github.com/MowlCoder/go-url-shortener/internal/handlers/dtos"
+	"github.com/MowlCoder/go-url-shortener/internal/logger"
 	"github.com/MowlCoder/go-url-shortener/internal/services"
 	"github.com/MowlCoder/go-url-shortener/internal/storage"
 )
@@ -25,8 +26,13 @@ func TestShortURL(t *testing.T) {
 	appConfig := &config.AppConfig{}
 	urlStorage, _ := storage.New(appConfig)
 	stringsGeneratorService := services.NewStringGenerator()
+	customLogger, _ := logger.NewLogger(logger.Options{
+		Level:        logger.LogInfo,
+		IsProduction: appConfig.AppEnvironment == config.AppProductionEnv,
+	})
+	deleteURLQueue := services.NewDeleteURLQueue(urlStorage, customLogger, 3)
 
-	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService, deleteURLQueue)
 
 	type want struct {
 		code        int
@@ -101,8 +107,13 @@ func TestShortURLJSON(t *testing.T) {
 	appConfig := &config.AppConfig{}
 	urlStorage, _ := storage.New(appConfig)
 	stringsGeneratorService := services.NewStringGenerator()
+	customLogger, _ := logger.NewLogger(logger.Options{
+		Level:        logger.LogInfo,
+		IsProduction: appConfig.AppEnvironment == config.AppProductionEnv,
+	})
+	deleteURLQueue := services.NewDeleteURLQueue(urlStorage, customLogger, 3)
 
-	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService, deleteURLQueue)
 
 	type want struct {
 		code        int
@@ -192,8 +203,13 @@ func TestShortBatchURL(t *testing.T) {
 	appConfig := &config.AppConfig{}
 	urlStorage, _ := storage.New(appConfig)
 	stringsGeneratorService := services.NewStringGenerator()
+	customLogger, _ := logger.NewLogger(logger.Options{
+		Level:        logger.LogInfo,
+		IsProduction: appConfig.AppEnvironment == config.AppProductionEnv,
+	})
+	deleteURLQueue := services.NewDeleteURLQueue(urlStorage, customLogger, 3)
 
-	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService, deleteURLQueue)
 
 	type want struct {
 		code        int
@@ -301,8 +317,13 @@ func TestRedirectToURLByID(t *testing.T) {
 	appConfig := &config.AppConfig{}
 	urlStorage, _ := storage.New(appConfig)
 	stringsGeneratorService := services.NewStringGenerator()
+	customLogger, _ := logger.NewLogger(logger.Options{
+		Level:        logger.LogInfo,
+		IsProduction: appConfig.AppEnvironment == config.AppProductionEnv,
+	})
+	deleteURLQueue := services.NewDeleteURLQueue(urlStorage, customLogger, 3)
 
-	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService, deleteURLQueue)
 
 	type want struct {
 		code int

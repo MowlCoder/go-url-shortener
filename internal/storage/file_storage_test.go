@@ -63,10 +63,10 @@ func TestFileStorage_GetOriginalURLByShortURL(t *testing.T) {
 			OriginalURL: testURL,
 		}
 
-		url, err := storage.GetOriginalURLByShortURL(context.Background(), testID)
+		url, err := storage.GetByShortURL(context.Background(), testID)
 
 		if assert.NoError(t, err) {
-			assert.Equal(t, testURL, url)
+			assert.Equal(t, testURL, url.OriginalURL)
 		}
 	})
 
@@ -74,7 +74,7 @@ func TestFileStorage_GetOriginalURLByShortURL(t *testing.T) {
 		testID := "testid"
 		storage, _ := NewFileStorage("")
 
-		_, err := storage.GetOriginalURLByShortURL(context.Background(), testID)
+		_, err := storage.GetByShortURL(context.Background(), testID)
 
 		assert.Error(t, err)
 	})
