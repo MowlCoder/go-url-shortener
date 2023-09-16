@@ -22,8 +22,9 @@ import (
 type URLStorage interface {
 	SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]models.ShortenedURL, error)
 	SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error)
-	GetOriginalURLByShortURL(ctx context.Context, shortURL string) (string, error)
+	GetByShortURL(ctx context.Context, shortURL string) (*models.ShortenedURL, error)
 	GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error)
+	DeleteByShortURLs(ctx context.Context, shortURLs []string, userID string) error
 	Ping(ctx context.Context) error
 }
 
@@ -31,21 +32,28 @@ type StringGeneratorService interface {
 	GenerateRandom() string
 }
 
+type DeleteURLQueue interface {
+	Push(task *domain.DeleteURLsTask)
+}
+
 type ShortenerHandler struct {
 	config          *config.AppConfig
 	urlStorage      URLStorage
 	stringGenerator StringGeneratorService
+	deleteURLQueue  DeleteURLQueue
 }
 
 func NewShortenerHandler(
 	config *config.AppConfig,
 	urlStorage URLStorage,
 	stringGenerator StringGeneratorService,
+	deleteURLQueue DeleteURLQueue,
 ) *ShortenerHandler {
 	return &ShortenerHandler{
 		config:          config,
 		urlStorage:      urlStorage,
 		stringGenerator: stringGenerator,
+		deleteURLQueue:  deleteURLQueue,
 	}
 }
 
@@ -225,16 +233,49 @@ func (h *ShortenerHandler) GetMyURLs(w http.ResponseWriter, r *http.Request) {
 	SendJSONResponse(w, 200, responseURLs)
 }
 
-func (h *ShortenerHandler) RedirectToURLByID(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	originalURL, err := h.urlStorage.GetOriginalURLByShortURL(r.Context(), id)
+func (h *ShortenerHandler) DeleteURLs(w http.ResponseWriter, r *http.Request) {
+	userID := contextUtil.GetUserIDFromContext(r.Context())
+	var requestBody dtos.DeleteURLsRequest
+	rawBody, err := io.ReadAll(r.Body)
 
 	if err != nil {
 		SendStatusCode(w, http.StatusBadRequest)
 		return
 	}
 
-	SendRedirectResponse(w, originalURL)
+	if err := json.Unmarshal(rawBody, &requestBody); err != nil {
+		SendStatusCode(w, http.StatusBadRequest)
+		return
+	}
+
+	if len(requestBody) == 0 {
+		SendStatusCode(w, http.StatusBadRequest)
+		return
+	}
+
+	go h.deleteURLQueue.Push(&domain.DeleteURLsTask{
+		ShortURLs: requestBody,
+		UserID:    userID,
+	})
+
+	SendStatusCode(w, http.StatusAccepted)
+}
+
+func (h *ShortenerHandler) RedirectToURLByID(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	originalURL, err := h.urlStorage.GetByShortURL(r.Context(), id)
+
+	if err != nil {
+		SendStatusCode(w, http.StatusBadRequest)
+		return
+	}
+
+	if originalURL.IsDeleted {
+		SendStatusCode(w, http.StatusGone)
+		return
+	}
+
+	SendRedirectResponse(w, originalURL.OriginalURL)
 }
 
 func (h *ShortenerHandler) Ping(w http.ResponseWriter, r *http.Request) {

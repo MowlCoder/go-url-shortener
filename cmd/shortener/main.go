@@ -53,8 +53,16 @@ func main() {
 
 	stringGeneratorService := services.NewStringGenerator()
 	userService := services.NewUserService()
+	deleteURLQueue := services.NewDeleteURLQueue(urlStorage, customLogger, 3)
 
-	shortenerHandler := handlers.NewShortenerHandler(appConfig, urlStorage, stringGeneratorService)
+	shortenerHandler := handlers.NewShortenerHandler(
+		appConfig,
+		urlStorage,
+		stringGeneratorService,
+		deleteURLQueue,
+	)
+
+	deleteURLQueue.Start()
 
 	mux := chi.NewRouter()
 
@@ -71,6 +79,7 @@ func main() {
 	mux.Post("/api/shorten/batch", shortenerHandler.ShortBatchURL)
 	mux.Post("/api/shorten", shortenerHandler.ShortURLJSON)
 	mux.Post("/", shortenerHandler.ShortURL)
+	mux.Delete("/api/user/urls", shortenerHandler.DeleteURLs)
 	mux.Get("/api/user/urls", shortenerHandler.GetMyURLs)
 	mux.Get("/ping", shortenerHandler.Ping)
 	mux.Get("/{id}", shortenerHandler.RedirectToURLByID)

@@ -20,12 +20,12 @@ func NewInMemoryStorage() (*InMemoryStorage, error) {
 	return &storage, nil
 }
 
-func (storage *InMemoryStorage) GetOriginalURLByShortURL(ctx context.Context, shortURL string) (string, error) {
+func (storage *InMemoryStorage) GetByShortURL(ctx context.Context, shortURL string) (*models.ShortenedURL, error) {
 	if url, ok := storage.structure[shortURL]; ok {
-		return url.OriginalURL, nil
+		return &url, nil
 	}
 
-	return "", errorURLNotFound
+	return nil, errorURLNotFound
 }
 
 func (storage *InMemoryStorage) GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error) {
@@ -82,6 +82,21 @@ func (storage *InMemoryStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 	}
 
 	return shortenedURLs, nil
+}
+
+func (storage *InMemoryStorage) DeleteByShortURLs(ctx context.Context, shortURLs []string, userID string) error {
+	for _, shortURL := range shortURLs {
+		shortenedURL := storage.structure[shortURL]
+
+		if shortenedURL.UserID != userID {
+			continue
+		}
+
+		shortenedURL.IsDeleted = true
+		storage.structure[shortURL] = shortenedURL
+	}
+
+	return nil
 }
 
 func (storage *InMemoryStorage) Ping(ctx context.Context) error {

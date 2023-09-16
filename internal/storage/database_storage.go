@@ -40,17 +40,20 @@ func NewDatabaseStorage(databaseDNS string) (*DatabaseStorage, error) {
 	return &dbStorage, nil
 }
 
-func (storage *DatabaseStorage) GetOriginalURLByShortURL(ctx context.Context, shortURL string) (string, error) {
-	row := storage.db.QueryRowContext(ctx, "SELECT original_url FROM shorten_url WHERE short_url = $1", shortURL)
+func (storage *DatabaseStorage) GetByShortURL(ctx context.Context, shortURL string) (*models.ShortenedURL, error) {
+	row := storage.db.QueryRowContext(ctx, "SELECT id, short_url, original_url, is_deleted FROM shorten_url WHERE short_url = $1", shortURL)
 
 	if row == nil || row.Err() != nil {
-		return "", errorURLNotFound
+		return nil, errorURLNotFound
 	}
 
-	var originalURL string
-	row.Scan(&originalURL)
+	shortenedURL := models.ShortenedURL{}
 
-	return originalURL, nil
+	if err := row.Scan(&shortenedURL.ID, &shortenedURL.ShortURL, &shortenedURL.OriginalURL, &shortenedURL.IsDeleted); err != nil {
+		return nil, err
+	}
+
+	return &shortenedURL, nil
 }
 
 func (storage *DatabaseStorage) GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error) {
@@ -181,6 +184,15 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 	return shortenedURLs, nil
 }
 
+func (storage *DatabaseStorage) DeleteByShortURLs(ctx context.Context, shortURLs []string, userID string) error {
+	_, err := storage.db.ExecContext(
+		ctx,
+		"UPDATE shorten_url SET is_deleted = TRUE WHERE short_url IN ($1) AND user_id = $2",
+		strings.Join(shortURLs, ","), userID,
+	)
+	return err
+}
+
 func (storage *DatabaseStorage) Ping(ctx context.Context) error {
 	return storage.db.Ping()
 }
@@ -200,7 +212,8 @@ func (storage *DatabaseStorage) bootstrap() error {
 	  		short_url VARCHAR ( 20 ) UNIQUE NOT NULL,
 	  		original_url TEXT NOT NULL,
 	  		user_id VARCHAR( 100 ) NOT NULL,
-	  		created_at TIMESTAMP NOT NULL DEFAULT NOW()
+	  		created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+		   	is_deleted BOOLEAN DEFAULT FALSE
 		)
 	`)
 	tx.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS short_url_idx ON shorten_url (short_url)`)

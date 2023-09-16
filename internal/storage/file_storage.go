@@ -35,12 +35,12 @@ func NewFileStorage(fileStoragePath string) (*FileStorage, error) {
 	return &storage, nil
 }
 
-func (storage *FileStorage) GetOriginalURLByShortURL(ctx context.Context, shortURL string) (string, error) {
+func (storage *FileStorage) GetByShortURL(ctx context.Context, shortURL string) (*models.ShortenedURL, error) {
 	if url, ok := storage.structure[shortURL]; ok {
-		return url.OriginalURL, nil
+		return &url, nil
 	}
 
-	return "", errorURLNotFound
+	return nil, errorURLNotFound
 }
 
 func (storage *FileStorage) GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error) {
@@ -110,6 +110,25 @@ func (storage *FileStorage) SaveSeveralURL(ctx context.Context, dtos []domain.Sa
 	}
 
 	return shortenedURLs, nil
+}
+
+func (storage *FileStorage) DeleteByShortURLs(ctx context.Context, shortURLs []string, userID string) error {
+	for _, shortURL := range shortURLs {
+		shortenedURL := storage.structure[shortURL]
+
+		if shortenedURL.UserID != userID {
+			continue
+		}
+
+		shortenedURL.IsDeleted = true
+		storage.structure[shortURL] = shortenedURL
+	}
+
+	if storage.savingChanges {
+		storage.saveToFile()
+	}
+
+	return nil
 }
 
 func (storage *FileStorage) Ping(ctx context.Context) error {
