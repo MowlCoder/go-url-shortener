@@ -200,12 +200,9 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		fmt.Println(err)
 		SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
-
-	fmt.Println(userID, shortenedURL.ShortURL, shortenedURL.UserID)
 
 	SendTextResponse(w, http.StatusCreated, fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL))
 }

@@ -5,8 +5,3 @@ type SaveShortURLDto struct {
 	ShortURL    string `json:"short_url"`
 	UserID      string `json:"user_id"`
 }
-
-type DeleteURLsTask struct {
-	ShortURLs []string
-	UserID    string
-}

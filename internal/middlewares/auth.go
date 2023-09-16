@@ -16,35 +16,39 @@ const CookieName = "token"
 
 func AuthMiddleware(handler http.Handler, userService UserService) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var tokenString string
+		authHandler(w, r, handler, userService)
+	})
+}
 
-		cookie, err := r.Cookie(CookieName)
+func authHandler(w http.ResponseWriter, r *http.Request, handler http.Handler, userService UserService) {
+	var tokenString string
 
-		if err != nil {
-			tokenString, err = jwt.GenerateToken(userService.GenerateUniqueID())
+	cookie, err := r.Cookie(CookieName)
 
-			if err != nil {
-				handlers.SendStatusCode(w, http.StatusInternalServerError)
-				return
-			}
-
-			http.SetCookie(w, &http.Cookie{
-				Name:  CookieName,
-				Value: tokenString,
-			})
-		} else {
-			tokenString = cookie.Value
-		}
-
-		jwtClaim, err := jwt.ParseToken(tokenString)
+	if err != nil {
+		tokenString, err = jwt.GenerateToken(userService.GenerateUniqueID())
 
 		if err != nil {
-			handlers.SendStatusCode(w, http.StatusUnauthorized)
+			handlers.SendStatusCode(w, http.StatusInternalServerError)
 			return
 		}
 
-		ctx := context.SetUserIDToContext(r.Context(), jwtClaim.UserID)
+		http.SetCookie(w, &http.Cookie{
+			Name:  CookieName,
+			Value: tokenString,
+		})
+	} else {
+		tokenString = cookie.Value
+	}
 
-		handler.ServeHTTP(w, r.WithContext(ctx))
-	})
+	jwtClaim, err := jwt.ParseToken(tokenString)
+
+	if err != nil {
+		handlers.SendStatusCode(w, http.StatusUnauthorized)
+		return
+	}
+
+	ctx := context.SetUserIDToContext(r.Context(), jwtClaim.UserID)
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
 }
