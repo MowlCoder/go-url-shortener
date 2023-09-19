@@ -131,6 +131,27 @@ func (storage *FileStorage) DeleteByShortURLs(ctx context.Context, shortURLs []s
 	return nil
 }
 
+func (storage *FileStorage) DoDeleteURLTasks(ctx context.Context, tasks []domain.DeleteURLsTask) error {
+	for _, task := range tasks {
+		for _, shortURL := range task.ShortURLs {
+			shortenedURL := storage.structure[shortURL]
+
+			if shortenedURL.UserID != task.UserID {
+				continue
+			}
+
+			shortenedURL.IsDeleted = true
+			storage.structure[shortURL] = shortenedURL
+		}
+	}
+
+	if storage.savingChanges {
+		storage.saveToFile()
+	}
+
+	return nil
+}
+
 func (storage *FileStorage) Ping(ctx context.Context) error {
 	return nil
 }

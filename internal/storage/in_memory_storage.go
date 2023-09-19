@@ -99,6 +99,23 @@ func (storage *InMemoryStorage) DeleteByShortURLs(ctx context.Context, shortURLs
 	return nil
 }
 
+func (storage *InMemoryStorage) DoDeleteURLTasks(ctx context.Context, tasks []domain.DeleteURLsTask) error {
+	for _, task := range tasks {
+		for _, shortURL := range task.ShortURLs {
+			shortenedURL := storage.structure[shortURL]
+
+			if shortenedURL.UserID != task.UserID {
+				continue
+			}
+
+			shortenedURL.IsDeleted = true
+			storage.structure[shortURL] = shortenedURL
+		}
+	}
+
+	return nil
+}
+
 func (storage *InMemoryStorage) Ping(ctx context.Context) error {
 	return nil
 }

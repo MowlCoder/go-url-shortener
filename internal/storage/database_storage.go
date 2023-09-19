@@ -179,6 +179,20 @@ func (storage *DatabaseStorage) DeleteByShortURLs(ctx context.Context, shortURLs
 	return err
 }
 
+func (storage *DatabaseStorage) DoDeleteURLTasks(ctx context.Context, tasks []domain.DeleteURLsTask) error {
+	batch := &pgx.Batch{}
+
+	for _, task := range tasks {
+		batch.Queue(
+			"UPDATE shorten_url SET is_deleted = TRUE WHERE user_id = $1 AND short_url = ANY($2)",
+			task.UserID, task.ShortURLs,
+		)
+	}
+
+	batchResult := storage.pool.SendBatch(ctx, batch)
+	return batchResult.Close()
+}
+
 func (storage *DatabaseStorage) Ping(ctx context.Context) error {
 	return storage.pool.Ping(ctx)
 }
