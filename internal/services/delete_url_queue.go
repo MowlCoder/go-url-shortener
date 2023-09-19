@@ -35,26 +35,23 @@ func (q *DeleteURLQueue) Start() {
 	deleteTasks := make([]domain.DeleteURLsTask, 0)
 
 	go func() {
-		for task := range q.ch {
-			deleteTasks = append(deleteTasks, *task)
-		}
-	}()
-
-	go func() {
 		for {
-			<-ticker.C
+			select {
+			case task := <-q.ch:
+				deleteTasks = append(deleteTasks, *task)
+			case <-ticker.C:
+				if len(deleteTasks) == 0 {
+					break
+				}
 
-			if len(deleteTasks) == 0 {
-				continue
+				if err := q.urlStorage.DoDeleteURLTasks(context.Background(), deleteTasks); err != nil {
+					q.logger.Info(err.Error())
+					continue
+				}
+
+				q.logger.Info(fmt.Sprintf("Successfully did %d delete url tasks", len(deleteTasks)))
+				deleteTasks = nil
 			}
-
-			if err := q.urlStorage.DoDeleteURLTasks(context.Background(), deleteTasks); err != nil {
-				q.logger.Info(err.Error())
-				continue
-			}
-
-			q.logger.Info(fmt.Sprintf("Successfully did %d delete url tasks", len(deleteTasks)))
-			deleteTasks = nil
 		}
 	}()
 }
