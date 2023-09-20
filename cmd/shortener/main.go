@@ -2,6 +2,7 @@ package main
 
 import (
 	"compress/gzip"
+	"context"
 	"fmt"
 	"log"
 	"math/rand"
@@ -62,7 +63,7 @@ func main() {
 		deleteURLQueue,
 	)
 
-	deleteURLQueue.Start()
+	deleteURLQueue.Start(context.Background())
 
 	mux := chi.NewRouter()
 
