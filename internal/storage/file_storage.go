@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/MowlCoder/go-url-shortener/internal/app/domain"
-	"github.com/MowlCoder/go-url-shortener/internal/app/storage/models"
+	"github.com/MowlCoder/go-url-shortener/internal/domain"
+	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
 )
 
 type FileStorage struct {
@@ -35,12 +35,24 @@ func NewFileStorage(fileStoragePath string) (*FileStorage, error) {
 	return &storage, nil
 }
 
-func (storage *FileStorage) GetOriginalURLByShortURL(ctx context.Context, shortURL string) (string, error) {
+func (storage *FileStorage) GetByShortURL(ctx context.Context, shortURL string) (*models.ShortenedURL, error) {
 	if url, ok := storage.structure[shortURL]; ok {
-		return url.OriginalURL, nil
+		return &url, nil
 	}
 
-	return "", errorURLNotFound
+	return nil, errorURLNotFound
+}
+
+func (storage *FileStorage) GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error) {
+	urls := make([]models.ShortenedURL, 0)
+
+	for _, value := range storage.structure {
+		if value.UserID == userID {
+			urls = append(urls, value)
+		}
+	}
+
+	return urls, nil
 }
 
 func (storage *FileStorage) FindByOriginalURL(ctx context.Context, originalURL string) (*models.ShortenedURL, error) {
@@ -98,6 +110,46 @@ func (storage *FileStorage) SaveSeveralURL(ctx context.Context, dtos []domain.Sa
 	}
 
 	return shortenedURLs, nil
+}
+
+func (storage *FileStorage) DeleteByShortURLs(ctx context.Context, shortURLs []string, userID string) error {
+	for _, shortURL := range shortURLs {
+		shortenedURL := storage.structure[shortURL]
+
+		if shortenedURL.UserID != userID {
+			continue
+		}
+
+		shortenedURL.IsDeleted = true
+		storage.structure[shortURL] = shortenedURL
+	}
+
+	if storage.savingChanges {
+		storage.saveToFile()
+	}
+
+	return nil
+}
+
+func (storage *FileStorage) DoDeleteURLTasks(ctx context.Context, tasks []domain.DeleteURLsTask) error {
+	for _, task := range tasks {
+		for _, shortURL := range task.ShortURLs {
+			shortenedURL := storage.structure[shortURL]
+
+			if shortenedURL.UserID != task.UserID {
+				continue
+			}
+
+			shortenedURL.IsDeleted = true
+			storage.structure[shortURL] = shortenedURL
+		}
+	}
+
+	if storage.savingChanges {
+		storage.saveToFile()
+	}
+
+	return nil
 }
 
 func (storage *FileStorage) Ping(ctx context.Context) error {

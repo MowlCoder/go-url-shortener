@@ -10,24 +10,29 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MowlCoder/go-url-shortener/internal/app/handlers/dtos"
-	"github.com/MowlCoder/go-url-shortener/internal/app/services"
-
-	"github.com/MowlCoder/go-url-shortener/internal/app/storage"
-
-	"github.com/MowlCoder/go-url-shortener/internal/app/config"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/MowlCoder/go-url-shortener/internal/config"
+	contextUtil "github.com/MowlCoder/go-url-shortener/internal/context"
+	"github.com/MowlCoder/go-url-shortener/internal/handlers/dtos"
+	"github.com/MowlCoder/go-url-shortener/internal/logger"
+	"github.com/MowlCoder/go-url-shortener/internal/services"
+	"github.com/MowlCoder/go-url-shortener/internal/storage"
 )
 
 func TestShortURL(t *testing.T) {
 	appConfig := &config.AppConfig{}
 	urlStorage, _ := storage.New(appConfig)
 	stringsGeneratorService := services.NewStringGenerator()
+	customLogger, _ := logger.NewLogger(logger.Options{
+		Level:        logger.LogInfo,
+		IsProduction: appConfig.AppEnvironment == config.AppProductionEnv,
+	})
+	deleteURLQueue := services.NewDeleteURLQueue(urlStorage, customLogger, 3)
 
-	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService, deleteURLQueue)
 
 	type want struct {
 		code        int
@@ -60,9 +65,10 @@ func TestShortURL(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, "/", test.body)
+			ctx := contextUtil.SetUserIDToContext(request.Context(), "1")
 			w := httptest.NewRecorder()
 
-			handler.ShortURL(w, request)
+			handler.ShortURL(w, request.WithContext(ctx))
 
 			res := w.Result()
 
@@ -75,9 +81,10 @@ func TestShortURL(t *testing.T) {
 
 	t.Run("Create short link twice", func(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://practicum.yandex.ru/123"))
+		ctx := contextUtil.SetUserIDToContext(request.Context(), "1")
 		w := httptest.NewRecorder()
 
-		handler.ShortURL(w, request)
+		handler.ShortURL(w, request.WithContext(ctx))
 
 		res := w.Result()
 
@@ -87,7 +94,7 @@ func TestShortURL(t *testing.T) {
 
 		request = httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://practicum.yandex.ru/123"))
 		w = httptest.NewRecorder()
-		handler.ShortURL(w, request)
+		handler.ShortURL(w, request.WithContext(ctx))
 
 		res = w.Result()
 		assert.Equal(t, 409, res.StatusCode)
@@ -100,8 +107,13 @@ func TestShortURLJSON(t *testing.T) {
 	appConfig := &config.AppConfig{}
 	urlStorage, _ := storage.New(appConfig)
 	stringsGeneratorService := services.NewStringGenerator()
+	customLogger, _ := logger.NewLogger(logger.Options{
+		Level:        logger.LogInfo,
+		IsProduction: appConfig.AppEnvironment == config.AppProductionEnv,
+	})
+	deleteURLQueue := services.NewDeleteURLQueue(urlStorage, customLogger, 3)
 
-	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService, deleteURLQueue)
 
 	type want struct {
 		code        int
@@ -142,10 +154,11 @@ func TestShortURLJSON(t *testing.T) {
 			require.NoError(t, err)
 
 			request := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewReader(jsonBody))
+			ctx := contextUtil.SetUserIDToContext(request.Context(), "1")
 			request.Header.Set("content-type", "application/json")
 			w := httptest.NewRecorder()
 
-			handler.ShortURLJSON(w, request)
+			handler.ShortURLJSON(w, request.WithContext(ctx))
 
 			res := w.Result()
 
@@ -164,9 +177,10 @@ func TestShortURLJSON(t *testing.T) {
 		require.NoError(t, err)
 
 		request := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(jsonBody))
+		ctx := contextUtil.SetUserIDToContext(request.Context(), "1")
 		w := httptest.NewRecorder()
 
-		handler.ShortURLJSON(w, request)
+		handler.ShortURLJSON(w, request.WithContext(ctx))
 
 		res := w.Result()
 
@@ -176,7 +190,7 @@ func TestShortURLJSON(t *testing.T) {
 
 		request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(jsonBody))
 		w = httptest.NewRecorder()
-		handler.ShortURLJSON(w, request)
+		handler.ShortURLJSON(w, request.WithContext(ctx))
 
 		res = w.Result()
 		assert.Equal(t, 409, res.StatusCode)
@@ -189,8 +203,13 @@ func TestShortBatchURL(t *testing.T) {
 	appConfig := &config.AppConfig{}
 	urlStorage, _ := storage.New(appConfig)
 	stringsGeneratorService := services.NewStringGenerator()
+	customLogger, _ := logger.NewLogger(logger.Options{
+		Level:        logger.LogInfo,
+		IsProduction: appConfig.AppEnvironment == config.AppProductionEnv,
+	})
+	deleteURLQueue := services.NewDeleteURLQueue(urlStorage, customLogger, 3)
 
-	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService, deleteURLQueue)
 
 	type want struct {
 		code        int
@@ -248,10 +267,11 @@ func TestShortBatchURL(t *testing.T) {
 			require.NoError(t, err)
 
 			request := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", bytes.NewReader(jsonBody))
+			ctx := contextUtil.SetUserIDToContext(request.Context(), "1")
 			request.Header.Set("content-type", "application/json")
 			w := httptest.NewRecorder()
 
-			handler.ShortBatchURL(w, request)
+			handler.ShortBatchURL(w, request.WithContext(ctx))
 
 			res := w.Result()
 
@@ -297,8 +317,13 @@ func TestRedirectToURLByID(t *testing.T) {
 	appConfig := &config.AppConfig{}
 	urlStorage, _ := storage.New(appConfig)
 	stringsGeneratorService := services.NewStringGenerator()
+	customLogger, _ := logger.NewLogger(logger.Options{
+		Level:        logger.LogInfo,
+		IsProduction: appConfig.AppEnvironment == config.AppProductionEnv,
+	})
+	deleteURLQueue := services.NewDeleteURLQueue(urlStorage, customLogger, 3)
 
-	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService)
+	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService, deleteURLQueue)
 
 	type want struct {
 		code int
@@ -331,8 +356,9 @@ func TestRedirectToURLByID(t *testing.T) {
 
 			if test.preCreateLink {
 				request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://practicum.yandex.ru"))
+				ctx := contextUtil.SetUserIDToContext(request.Context(), "1")
 				w := httptest.NewRecorder()
-				handler.ShortURL(w, request)
+				handler.ShortURL(w, request.WithContext(ctx))
 
 				res := w.Result()
 

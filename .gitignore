@@ -21,3 +21,8 @@ vendor/
 # IDEs directories
 .idea
 .vscode
+
+.env
+
+shortenertest
+shortenertestbeta
