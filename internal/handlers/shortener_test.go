@@ -40,6 +40,7 @@ func TestShortURL(t *testing.T) {
 	type TestCase struct {
 		Name               string
 		Body               string
+		NotAuth            bool
 		PrepareServiceFunc func(
 			ctx context.Context,
 			body string,
@@ -72,6 +73,13 @@ func TestShortURL(t *testing.T) {
 			Body:               "",
 			PrepareServiceFunc: nil,
 			ExpectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			Name:               "not auth",
+			NotAuth:            true,
+			Body:               "",
+			PrepareServiceFunc: nil,
+			ExpectedStatusCode: http.StatusUnauthorized,
 		},
 		{
 			Name: "err row conflict",
@@ -117,8 +125,11 @@ func TestShortURL(t *testing.T) {
 		t.Run(testCase.Name, func(t *testing.T) {
 			r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(testCase.Body))
 			r.Header.Set("Content-Type", "text/plain")
-			ctx := contextUtil.SetUserIDToContext(r.Context(), "1")
-			r = r.WithContext(ctx)
+
+			if !testCase.NotAuth {
+				ctx := contextUtil.SetUserIDToContext(r.Context(), "1")
+				r = r.WithContext(ctx)
+			}
 
 			w := httptest.NewRecorder()
 
@@ -152,6 +163,7 @@ func TestShortURLJSON(t *testing.T) {
 	type TestCase struct {
 		Name               string
 		Body               *dtos.ShortURLDto
+		NotAuth            bool
 		PrepareServiceFunc func(
 			ctx context.Context,
 			body *dtos.ShortURLDto,
@@ -186,6 +198,13 @@ func TestShortURLJSON(t *testing.T) {
 			Body:               nil,
 			PrepareServiceFunc: nil,
 			ExpectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			Name:               "not auth",
+			Body:               nil,
+			NotAuth:            true,
+			PrepareServiceFunc: nil,
+			ExpectedStatusCode: http.StatusUnauthorized,
 		},
 		{
 			Name:               "invalid body",
@@ -249,8 +268,11 @@ func TestShortURLJSON(t *testing.T) {
 
 			r := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(rawBody))
 			r.Header.Set("Content-Type", "application/json")
-			ctx := contextUtil.SetUserIDToContext(r.Context(), "1")
-			r = r.WithContext(ctx)
+
+			if !testCase.NotAuth {
+				ctx := contextUtil.SetUserIDToContext(r.Context(), "1")
+				r = r.WithContext(ctx)
+			}
 
 			w := httptest.NewRecorder()
 
@@ -284,6 +306,7 @@ func TestShortBatchURL(t *testing.T) {
 	type TestCase struct {
 		Name               string
 		Body               []dtos.ShortBatchURLDto
+		NotAuth            bool
 		PrepareServiceFunc func(
 			ctx context.Context,
 			body []dtos.ShortBatchURLDto,
@@ -333,6 +356,13 @@ func TestShortBatchURL(t *testing.T) {
 			ExpectedStatusCode: http.StatusBadRequest,
 		},
 		{
+			Name:               "not auth",
+			NotAuth:            true,
+			Body:               nil,
+			PrepareServiceFunc: nil,
+			ExpectedStatusCode: http.StatusUnauthorized,
+		},
+		{
 			Name:               "invalid body",
 			Body:               []dtos.ShortBatchURLDto{},
 			PrepareServiceFunc: nil,
@@ -379,8 +409,11 @@ func TestShortBatchURL(t *testing.T) {
 
 			r := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(rawBody))
 			r.Header.Set("Content-Type", "application/json")
-			ctx := contextUtil.SetUserIDToContext(r.Context(), "1")
-			r = r.WithContext(ctx)
+
+			if !testCase.NotAuth {
+				ctx := contextUtil.SetUserIDToContext(r.Context(), "1")
+				r = r.WithContext(ctx)
+			}
 
 			w := httptest.NewRecorder()
 
@@ -444,6 +477,7 @@ func TestGetMyURLs(t *testing.T) {
 
 	type TestCase struct {
 		Name               string
+		NotAuth            bool
 		PrepareServiceFunc func(
 			ctx context.Context,
 		)
@@ -472,6 +506,12 @@ func TestGetMyURLs(t *testing.T) {
 			ExpectedStatusCode: http.StatusNoContent,
 		},
 		{
+			Name:               "not auth",
+			NotAuth:            true,
+			PrepareServiceFunc: nil,
+			ExpectedStatusCode: http.StatusUnauthorized,
+		},
+		{
 			Name: "internal server error",
 			PrepareServiceFunc: func(ctx context.Context) {
 				urlStorage.
@@ -486,8 +526,11 @@ func TestGetMyURLs(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
 			r := httptest.NewRequest(http.MethodGet, "/", nil)
-			ctx := contextUtil.SetUserIDToContext(r.Context(), userID)
-			r = r.WithContext(ctx)
+
+			if !testCase.NotAuth {
+				ctx := contextUtil.SetUserIDToContext(r.Context(), userID)
+				r = r.WithContext(ctx)
+			}
 
 			w := httptest.NewRecorder()
 
@@ -521,6 +564,7 @@ func TestDeleteURLs(t *testing.T) {
 
 	type TestCase struct {
 		Name               string
+		NotAuth            bool
 		Body               dtos.DeleteURLsRequest
 		PrepareServiceFunc func(
 			ctx context.Context,
@@ -546,6 +590,13 @@ func TestDeleteURLs(t *testing.T) {
 			ExpectedStatusCode: http.StatusBadRequest,
 		},
 		{
+			Name:               "not auth",
+			NotAuth:            true,
+			Body:               nil,
+			PrepareServiceFunc: nil,
+			ExpectedStatusCode: http.StatusUnauthorized,
+		},
+		{
 			Name:               "invalid body",
 			Body:               dtos.DeleteURLsRequest{},
 			PrepareServiceFunc: nil,
@@ -564,8 +615,11 @@ func TestDeleteURLs(t *testing.T) {
 			}
 
 			r := httptest.NewRequest(http.MethodDelete, "/", bytes.NewReader(rawBody))
-			ctx := contextUtil.SetUserIDToContext(r.Context(), userID)
-			r = r.WithContext(ctx)
+
+			if !testCase.NotAuth {
+				ctx := contextUtil.SetUserIDToContext(r.Context(), userID)
+				r = r.WithContext(ctx)
+			}
 
 			w := httptest.NewRecorder()
 

@@ -57,7 +57,12 @@ func NewShortenerHandler(
 }
 
 func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) {
-	userID := contextUtil.GetUserIDFromContext(r.Context())
+	userID, err := contextUtil.GetUserIDFromContext(r.Context())
+	if err != nil {
+		SendStatusCode(w, http.StatusUnauthorized)
+		return
+	}
+
 	requestBody := dtos.ShortURLDto{}
 	rawBody, err := io.ReadAll(r.Body)
 
@@ -101,7 +106,12 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request) {
-	userID := contextUtil.GetUserIDFromContext(r.Context())
+	userID, err := contextUtil.GetUserIDFromContext(r.Context())
+	if err != nil {
+		SendStatusCode(w, http.StatusUnauthorized)
+		return
+	}
+
 	requestBody := make([]dtos.ShortBatchURLDto, 0)
 	rawBody, err := io.ReadAll(r.Body)
 
@@ -155,7 +165,12 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
-	userID := contextUtil.GetUserIDFromContext(r.Context())
+	userID, err := contextUtil.GetUserIDFromContext(r.Context())
+	if err != nil {
+		SendStatusCode(w, http.StatusUnauthorized)
+		return
+	}
+
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -189,7 +204,12 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ShortenerHandler) GetMyURLs(w http.ResponseWriter, r *http.Request) {
-	userID := contextUtil.GetUserIDFromContext(r.Context())
+	userID, err := contextUtil.GetUserIDFromContext(r.Context())
+	if err != nil {
+		SendStatusCode(w, http.StatusUnauthorized)
+		return
+	}
+
 	urls, err := h.urlStorage.GetURLsByUserID(r.Context(), userID)
 
 	if err != nil {
@@ -215,7 +235,12 @@ func (h *ShortenerHandler) GetMyURLs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ShortenerHandler) DeleteURLs(w http.ResponseWriter, r *http.Request) {
-	userID := contextUtil.GetUserIDFromContext(r.Context())
+	userID, err := contextUtil.GetUserIDFromContext(r.Context())
+	if err != nil {
+		SendStatusCode(w, http.StatusUnauthorized)
+		return
+	}
+
 	var requestBody dtos.DeleteURLsRequest
 	rawBody, err := io.ReadAll(r.Body)
 

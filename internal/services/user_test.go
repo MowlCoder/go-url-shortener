@@ -19,3 +19,12 @@ func TestUserService_GenerateUniqueID(t *testing.T) {
 		assert.NotEqual(t, firstUserID, secondUserID)
 	})
 }
+
+func BenchmarkUserService_GenerateUniqueID(b *testing.B) {
+	userService := NewUserService()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		userService.GenerateUniqueID()
+	}
+}
