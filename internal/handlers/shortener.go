@@ -15,7 +15,6 @@ import (
 	contextUtil "github.com/MowlCoder/go-url-shortener/internal/context"
 	"github.com/MowlCoder/go-url-shortener/internal/domain"
 	"github.com/MowlCoder/go-url-shortener/internal/handlers/dtos"
-	"github.com/MowlCoder/go-url-shortener/internal/storage"
 	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
 )
 
@@ -84,20 +83,11 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 		UserID:      userID,
 	})
 
-	if errors.Is(err, storage.ErrRowConflict) {
+	if errors.Is(err, domain.ErrURLConflict) {
 		SendJSONResponse(w, http.StatusConflict, dtos.ShortURLResponse{
 			Result: fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL),
 		})
 		return
-	}
-
-	if errors.Is(err, storage.ErrShortURLConflict) {
-		shortURL = h.stringGenerator.GenerateRandom()
-		shortenedURL, err = h.urlStorage.SaveURL(r.Context(), domain.SaveShortURLDto{
-			OriginalURL: requestBody.URL,
-			ShortURL:    shortURL,
-			UserID:      "1",
-		})
 	}
 
 	if err != nil {
@@ -185,18 +175,9 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 		UserID:      userID,
 	})
 
-	if errors.Is(err, storage.ErrRowConflict) {
+	if errors.Is(err, domain.ErrURLConflict) {
 		SendTextResponse(w, http.StatusConflict, fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL))
 		return
-	}
-
-	if errors.Is(err, storage.ErrShortURLConflict) {
-		shortURL = h.stringGenerator.GenerateRandom()
-		shortenedURL, err = h.urlStorage.SaveURL(r.Context(), domain.SaveShortURLDto{
-			OriginalURL: string(body),
-			ShortURL:    shortURL,
-			UserID:      userID,
-		})
 	}
 
 	if err != nil {

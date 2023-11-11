@@ -81,6 +81,12 @@ func TestSendJSONResponse(t *testing.T) {
 		assert.Equal(t, "application/json", res.Header.Get("content-type"))
 		assert.JSONEq(t, string(jsonData), string(body))
 	})
+
+	t.Run("Send invalid json type", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		err := SendJSONResponse(w, http.StatusCreated, make(chan int))
+		require.Error(t, err)
+	})
 }
 
 func TestSendRedirectResponse(t *testing.T) {

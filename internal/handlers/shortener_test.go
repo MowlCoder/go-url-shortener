@@ -4,294 +4,409 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"github.com/MowlCoder/go-url-shortener/internal/domain"
+	handlersmock "github.com/MowlCoder/go-url-shortener/internal/handlers/mocks"
+	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
+	"github.com/go-chi/chi/v5"
+	"go.uber.org/mock/gomock"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/MowlCoder/go-url-shortener/internal/config"
 	contextUtil "github.com/MowlCoder/go-url-shortener/internal/context"
 	"github.com/MowlCoder/go-url-shortener/internal/handlers/dtos"
-	"github.com/MowlCoder/go-url-shortener/internal/logger"
-	"github.com/MowlCoder/go-url-shortener/internal/services"
-	"github.com/MowlCoder/go-url-shortener/internal/storage"
 )
 
 func TestShortURL(t *testing.T) {
-	appConfig := &config.AppConfig{}
-	urlStorage, _ := storage.New(appConfig)
-	stringsGeneratorService := services.NewStringGenerator()
-	customLogger, _ := logger.NewLogger(logger.Options{
-		Level:        logger.LogInfo,
-		IsProduction: appConfig.AppEnvironment == config.AppProductionEnv,
-	})
-	deleteURLQueue := services.NewDeleteURLQueue(urlStorage, customLogger, 3)
+	ctrl := gomock.NewController(t)
+	urlStorage := handlersmock.NewMockURLStorage(ctrl)
+	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
+	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
 
-	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService, deleteURLQueue)
+	handler := NewShortenerHandler(
+		&config.AppConfig{},
+		urlStorage,
+		stringsGenerator,
+		deleteQueue,
+	)
 
-	type want struct {
-		code        int
-		contentType string
+	type TestCase struct {
+		Name               string
+		Body               string
+		PrepareServiceFunc func(
+			ctx context.Context,
+			body string,
+		)
+		ExpectedStatusCode int
 	}
 
-	tests := []struct {
-		name string
-		body io.Reader
-		want want
-	}{
+	testCases := []TestCase{
 		{
-			name: "Create short link (valid)",
-			body: strings.NewReader("https://practicum.yandex.ru"),
-			want: want{
-				code:        201,
-				contentType: "text/plain",
+			Name: "valid",
+			Body: "https://url.com",
+			PrepareServiceFunc: func(ctx context.Context, body string) {
+				stringsGenerator.
+					EXPECT().
+					GenerateRandom().
+					Return("1234")
+				urlStorage.
+					EXPECT().
+					SaveURL(ctx, domain.SaveShortURLDto{
+						OriginalURL: body,
+						ShortURL:    "1234",
+						UserID:      "1",
+					}).
+					Return(&models.ShortenedURL{}, nil)
 			},
+			ExpectedStatusCode: http.StatusCreated,
 		},
 		{
-			name: "Create short link (invalid)",
-			body: nil,
-			want: want{
-				code:        400,
-				contentType: "",
+			Name:               "invalid body",
+			Body:               "",
+			PrepareServiceFunc: nil,
+			ExpectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			Name: "err row conflict",
+			Body: "https://url.com",
+			PrepareServiceFunc: func(ctx context.Context, body string) {
+				stringsGenerator.
+					EXPECT().
+					GenerateRandom().
+					Return("1234")
+				urlStorage.
+					EXPECT().
+					SaveURL(ctx, domain.SaveShortURLDto{
+						OriginalURL: body,
+						ShortURL:    "1234",
+						UserID:      "1",
+					}).
+					Return(&models.ShortenedURL{}, domain.ErrURLConflict)
 			},
+			ExpectedStatusCode: http.StatusConflict,
+		},
+		{
+			Name: "internal server error",
+			Body: "https://url.com",
+			PrepareServiceFunc: func(ctx context.Context, body string) {
+				stringsGenerator.
+					EXPECT().
+					GenerateRandom().
+					Return("1234")
+				urlStorage.
+					EXPECT().
+					SaveURL(ctx, domain.SaveShortURLDto{
+						OriginalURL: body,
+						ShortURL:    "1234",
+						UserID:      "1",
+					}).
+					Return(nil, errors.New("undefined behavior"))
+			},
+			ExpectedStatusCode: http.StatusInternalServerError,
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, "/", test.body)
-			ctx := contextUtil.SetUserIDToContext(request.Context(), "1")
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(testCase.Body))
+			r.Header.Set("Content-Type", "text/plain")
+			ctx := contextUtil.SetUserIDToContext(r.Context(), "1")
+			r = r.WithContext(ctx)
+
 			w := httptest.NewRecorder()
 
-			handler.ShortURL(w, request.WithContext(ctx))
+			if testCase.PrepareServiceFunc != nil {
+				testCase.PrepareServiceFunc(r.Context(), testCase.Body)
+			}
+
+			handler.ShortURL(w, r)
 
 			res := w.Result()
-
-			assert.Equal(t, test.want.code, res.StatusCode)
 			defer res.Body.Close()
 
-			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
+			assert.Equal(t, testCase.ExpectedStatusCode, res.StatusCode)
 		})
 	}
-
-	t.Run("Create short link twice", func(t *testing.T) {
-		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://practicum.yandex.ru/123"))
-		ctx := contextUtil.SetUserIDToContext(request.Context(), "1")
-		w := httptest.NewRecorder()
-
-		handler.ShortURL(w, request.WithContext(ctx))
-
-		res := w.Result()
-
-		assert.Equal(t, 201, res.StatusCode)
-		defer res.Body.Close()
-		assert.Equal(t, "text/plain", res.Header.Get("Content-Type"))
-
-		request = httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://practicum.yandex.ru/123"))
-		w = httptest.NewRecorder()
-		handler.ShortURL(w, request.WithContext(ctx))
-
-		res = w.Result()
-		assert.Equal(t, 409, res.StatusCode)
-		defer res.Body.Close()
-		assert.Equal(t, "text/plain", res.Header.Get("Content-Type"))
-	})
 }
 
 func TestShortURLJSON(t *testing.T) {
-	appConfig := &config.AppConfig{}
-	urlStorage, _ := storage.New(appConfig)
-	stringsGeneratorService := services.NewStringGenerator()
-	customLogger, _ := logger.NewLogger(logger.Options{
-		Level:        logger.LogInfo,
-		IsProduction: appConfig.AppEnvironment == config.AppProductionEnv,
-	})
-	deleteURLQueue := services.NewDeleteURLQueue(urlStorage, customLogger, 3)
+	ctrl := gomock.NewController(t)
+	urlStorage := handlersmock.NewMockURLStorage(ctrl)
+	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
+	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
 
-	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService, deleteURLQueue)
+	handler := NewShortenerHandler(
+		&config.AppConfig{},
+		urlStorage,
+		stringsGenerator,
+		deleteQueue,
+	)
 
-	type want struct {
-		code        int
-		contentType string
+	type TestCase struct {
+		Name               string
+		Body               *dtos.ShortURLDto
+		PrepareServiceFunc func(
+			ctx context.Context,
+			body *dtos.ShortURLDto,
+		)
+		ExpectedStatusCode int
 	}
 
-	tests := []struct {
-		name string
-		body dtos.ShortURLDto
-		want want
-	}{
+	testCases := []TestCase{
 		{
-			name: "Create short link (valid)",
-			body: dtos.ShortURLDto{
-				URL: "https://vk.com",
+			Name: "valid",
+			Body: &dtos.ShortURLDto{
+				URL: "https://url.com",
 			},
-			want: want{
-				code:        201,
-				contentType: "application/json",
+			PrepareServiceFunc: func(ctx context.Context, body *dtos.ShortURLDto) {
+				stringsGenerator.
+					EXPECT().
+					GenerateRandom().
+					Return("1234")
+				urlStorage.
+					EXPECT().
+					SaveURL(ctx, domain.SaveShortURLDto{
+						OriginalURL: body.URL,
+						ShortURL:    "1234",
+						UserID:      "1",
+					}).
+					Return(&models.ShortenedURL{}, nil)
 			},
+			ExpectedStatusCode: http.StatusCreated,
 		},
 		{
-			name: "Create short link (invalid)",
-			body: dtos.ShortURLDto{
-				URL: "",
+			Name:               "nil body",
+			Body:               nil,
+			PrepareServiceFunc: nil,
+			ExpectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			Name:               "invalid body",
+			Body:               &dtos.ShortURLDto{},
+			PrepareServiceFunc: nil,
+			ExpectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			Name: "err row conflict",
+			Body: &dtos.ShortURLDto{
+				URL: "https://url.com",
 			},
-			want: want{
-				code:        400,
-				contentType: "",
+			PrepareServiceFunc: func(ctx context.Context, body *dtos.ShortURLDto) {
+				stringsGenerator.
+					EXPECT().
+					GenerateRandom().
+					Return("1234")
+				urlStorage.
+					EXPECT().
+					SaveURL(ctx, domain.SaveShortURLDto{
+						OriginalURL: body.URL,
+						ShortURL:    "1234",
+						UserID:      "1",
+					}).
+					Return(&models.ShortenedURL{}, domain.ErrURLConflict)
 			},
+			ExpectedStatusCode: http.StatusConflict,
+		},
+		{
+			Name: "internal server error",
+			Body: &dtos.ShortURLDto{
+				URL: "https://url.com",
+			},
+			PrepareServiceFunc: func(ctx context.Context, body *dtos.ShortURLDto) {
+				stringsGenerator.
+					EXPECT().
+					GenerateRandom().
+					Return("1234")
+				urlStorage.
+					EXPECT().
+					SaveURL(ctx, domain.SaveShortURLDto{
+						OriginalURL: body.URL,
+						ShortURL:    "1234",
+						UserID:      "1",
+					}).
+					Return(nil, errors.New("undefined behavior"))
+			},
+			ExpectedStatusCode: http.StatusInternalServerError,
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			jsonBody, err := json.Marshal(test.body)
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			var rawBody []byte
+			var err error
 
-			require.NoError(t, err)
+			if testCase.Body != nil {
+				rawBody, err = json.Marshal(*testCase.Body)
+				require.NoError(t, err)
+			}
 
-			request := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewReader(jsonBody))
-			ctx := contextUtil.SetUserIDToContext(request.Context(), "1")
-			request.Header.Set("content-type", "application/json")
+			r := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(rawBody))
+			r.Header.Set("Content-Type", "application/json")
+			ctx := contextUtil.SetUserIDToContext(r.Context(), "1")
+			r = r.WithContext(ctx)
+
 			w := httptest.NewRecorder()
 
-			handler.ShortURLJSON(w, request.WithContext(ctx))
+			if testCase.PrepareServiceFunc != nil {
+				testCase.PrepareServiceFunc(r.Context(), testCase.Body)
+			}
+
+			handler.ShortURLJSON(w, r)
 
 			res := w.Result()
-
-			assert.Equal(t, test.want.code, res.StatusCode)
 			defer res.Body.Close()
 
-			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
+			assert.Equal(t, testCase.ExpectedStatusCode, res.StatusCode)
 		})
 	}
-
-	t.Run("Create short link twice", func(t *testing.T) {
-		jsonBody, err := json.Marshal(dtos.ShortURLDto{
-			URL: "https://vk.com/123",
-		})
-
-		require.NoError(t, err)
-
-		request := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(jsonBody))
-		ctx := contextUtil.SetUserIDToContext(request.Context(), "1")
-		w := httptest.NewRecorder()
-
-		handler.ShortURLJSON(w, request.WithContext(ctx))
-
-		res := w.Result()
-
-		assert.Equal(t, 201, res.StatusCode)
-		defer res.Body.Close()
-		assert.Equal(t, "application/json", res.Header.Get("Content-Type"))
-
-		request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(jsonBody))
-		w = httptest.NewRecorder()
-		handler.ShortURLJSON(w, request.WithContext(ctx))
-
-		res = w.Result()
-		assert.Equal(t, 409, res.StatusCode)
-		defer res.Body.Close()
-		assert.Equal(t, "application/json", res.Header.Get("Content-Type"))
-	})
 }
 
 func TestShortBatchURL(t *testing.T) {
-	appConfig := &config.AppConfig{}
-	urlStorage, _ := storage.New(appConfig)
-	stringsGeneratorService := services.NewStringGenerator()
-	customLogger, _ := logger.NewLogger(logger.Options{
-		Level:        logger.LogInfo,
-		IsProduction: appConfig.AppEnvironment == config.AppProductionEnv,
-	})
-	deleteURLQueue := services.NewDeleteURLQueue(urlStorage, customLogger, 3)
+	ctrl := gomock.NewController(t)
+	urlStorage := handlersmock.NewMockURLStorage(ctrl)
+	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
+	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
 
-	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService, deleteURLQueue)
+	handler := NewShortenerHandler(
+		&config.AppConfig{},
+		urlStorage,
+		stringsGenerator,
+		deleteQueue,
+	)
 
-	type want struct {
-		code        int
-		contentType string
+	type TestCase struct {
+		Name               string
+		Body               []dtos.ShortBatchURLDto
+		PrepareServiceFunc func(
+			ctx context.Context,
+			body []dtos.ShortBatchURLDto,
+		)
+		ExpectedStatusCode int
 	}
 
-	tests := []struct {
-		name string
-		body []dtos.ShortBatchURLDto
-		want want
-	}{
+	testCases := []TestCase{
 		{
-			name: "Create short links (valid)",
-			body: []dtos.ShortBatchURLDto{
+			Name: "valid",
+			Body: []dtos.ShortBatchURLDto{
 				{
-					OriginalURL:   "https://youtube.com/1",
-					CorrelationID: "123",
+					OriginalURL:   "https://url.com",
+					CorrelationID: "1",
 				},
 				{
-					OriginalURL:   "https://youtube.com/2",
-					CorrelationID: "123456",
-				},
-				{
-					OriginalURL:   "https://youtube.com/3",
-					CorrelationID: "1236789",
+					OriginalURL:   "https://url.com/1",
+					CorrelationID: "2",
 				},
 			},
-			want: want{
-				code:        201,
-				contentType: "application/json",
+			PrepareServiceFunc: func(ctx context.Context, body []dtos.ShortBatchURLDto) {
+				shortenedUrls := make([]models.ShortenedURL, 0)
+
+				for _, dto := range body {
+					stringsGenerator.
+						EXPECT().
+						GenerateRandom().
+						Return(dto.CorrelationID + "1234")
+
+					shortenedUrls = append(shortenedUrls, models.ShortenedURL{
+						ShortURL:    dto.CorrelationID + "1234",
+						OriginalURL: dto.OriginalURL,
+					})
+				}
+
+				urlStorage.
+					EXPECT().
+					SaveSeveralURL(ctx, gomock.Any()).
+					Return(shortenedUrls, nil)
 			},
+			ExpectedStatusCode: http.StatusCreated,
 		},
 		{
-			name: "Create short link (invalid body)",
-			body: nil,
-			want: want{
-				code:        400,
-				contentType: "",
-			},
+			Name:               "nil body",
+			Body:               nil,
+			PrepareServiceFunc: nil,
+			ExpectedStatusCode: http.StatusBadRequest,
 		},
 		{
-			name: "Create short link (valid empty body)",
-			body: []dtos.ShortBatchURLDto{},
-			want: want{
-				code:        400,
-				contentType: "",
+			Name:               "invalid body",
+			Body:               []dtos.ShortBatchURLDto{},
+			PrepareServiceFunc: nil,
+			ExpectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			Name: "internal server error",
+			Body: []dtos.ShortBatchURLDto{
+				{
+					OriginalURL:   "https://url.com",
+					CorrelationID: "1",
+				},
+				{
+					OriginalURL:   "https://url.com/1",
+					CorrelationID: "2",
+				},
 			},
+			PrepareServiceFunc: func(ctx context.Context, body []dtos.ShortBatchURLDto) {
+				for _, dto := range body {
+					stringsGenerator.
+						EXPECT().
+						GenerateRandom().
+						Return(dto.CorrelationID + "1234")
+				}
+
+				urlStorage.
+					EXPECT().
+					SaveSeveralURL(ctx, gomock.Any()).
+					Return(nil, errors.New("undefined behavior"))
+			},
+			ExpectedStatusCode: http.StatusInternalServerError,
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			jsonBody, err := json.Marshal(test.body)
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			var rawBody []byte
+			var err error
 
-			require.NoError(t, err)
+			if testCase.Body != nil {
+				rawBody, err = json.Marshal(testCase.Body)
+				require.NoError(t, err)
+			}
 
-			request := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", bytes.NewReader(jsonBody))
-			ctx := contextUtil.SetUserIDToContext(request.Context(), "1")
-			request.Header.Set("content-type", "application/json")
+			r := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(rawBody))
+			r.Header.Set("Content-Type", "application/json")
+			ctx := contextUtil.SetUserIDToContext(r.Context(), "1")
+			r = r.WithContext(ctx)
+
 			w := httptest.NewRecorder()
 
-			handler.ShortBatchURL(w, request.WithContext(ctx))
+			if testCase.PrepareServiceFunc != nil {
+				testCase.PrepareServiceFunc(r.Context(), testCase.Body)
+			}
+
+			handler.ShortBatchURL(w, r)
 
 			res := w.Result()
-
-			assert.Equal(t, test.want.code, res.StatusCode)
 			defer res.Body.Close()
 
-			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
+			assert.Equal(t, testCase.ExpectedStatusCode, res.StatusCode)
 
-			if test.want.code == 201 {
+			if res.StatusCode == http.StatusCreated {
 				response, err := io.ReadAll(res.Body)
 				require.NoError(t, err)
 
 				var responseBody []dtos.ShortBatchURLResponse
 				require.NoError(t, json.Unmarshal(response, &responseBody))
 
-				assert.Equal(t, len(test.body), len(responseBody))
+				assert.Equal(t, len(testCase.Body), len(responseBody))
 
 				allFound := true
 
-				for _, dto := range test.body {
+				for _, dto := range testCase.Body {
 					isFound := false
 
 					for _, resDto := range responseBody {
@@ -313,81 +428,302 @@ func TestShortBatchURL(t *testing.T) {
 	}
 }
 
-func TestRedirectToURLByID(t *testing.T) {
-	appConfig := &config.AppConfig{}
-	urlStorage, _ := storage.New(appConfig)
-	stringsGeneratorService := services.NewStringGenerator()
-	customLogger, _ := logger.NewLogger(logger.Options{
-		Level:        logger.LogInfo,
-		IsProduction: appConfig.AppEnvironment == config.AppProductionEnv,
-	})
-	deleteURLQueue := services.NewDeleteURLQueue(urlStorage, customLogger, 3)
+func TestGetMyURLs(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	urlStorage := handlersmock.NewMockURLStorage(ctrl)
+	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
+	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	userID := "1"
 
-	handler := NewShortenerHandler(appConfig, urlStorage, stringsGeneratorService, deleteURLQueue)
+	handler := NewShortenerHandler(
+		&config.AppConfig{},
+		urlStorage,
+		stringsGenerator,
+		deleteQueue,
+	)
 
-	type want struct {
-		code int
+	type TestCase struct {
+		Name               string
+		PrepareServiceFunc func(
+			ctx context.Context,
+		)
+		ExpectedStatusCode int
 	}
 
-	tests := []struct {
-		name          string
-		preCreateLink bool
-		want          want
-	}{
+	testCases := []TestCase{
 		{
-			name:          "Get original url (valid)",
-			preCreateLink: true,
-			want: want{
-				code: 307,
+			Name: "valid",
+			PrepareServiceFunc: func(ctx context.Context) {
+				urlStorage.
+					EXPECT().
+					GetURLsByUserID(ctx, userID).
+					Return([]models.ShortenedURL{{}, {}}, nil)
 			},
+			ExpectedStatusCode: http.StatusOK,
 		},
 		{
-			name:          "Get original url (invalid)",
-			preCreateLink: false,
-			want: want{
-				code: 400,
+			Name: "valid (no content)",
+			PrepareServiceFunc: func(ctx context.Context) {
+				urlStorage.
+					EXPECT().
+					GetURLsByUserID(ctx, userID).
+					Return([]models.ShortenedURL{}, nil)
 			},
+			ExpectedStatusCode: http.StatusNoContent,
+		},
+		{
+			Name: "internal server error",
+			PrepareServiceFunc: func(ctx context.Context) {
+				urlStorage.
+					EXPECT().
+					GetURLsByUserID(ctx, userID).
+					Return(nil, errors.New("undefined behavior"))
+			},
+			ExpectedStatusCode: http.StatusInternalServerError,
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			id := "test-id"
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, "/", nil)
+			ctx := contextUtil.SetUserIDToContext(r.Context(), userID)
+			r = r.WithContext(ctx)
 
-			if test.preCreateLink {
-				request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://practicum.yandex.ru"))
-				ctx := contextUtil.SetUserIDToContext(request.Context(), "1")
-				w := httptest.NewRecorder()
-				handler.ShortURL(w, request.WithContext(ctx))
-
-				res := w.Result()
-
-				require.Equal(t, http.StatusCreated, res.StatusCode)
-				defer res.Body.Close()
-
-				resBody, err := io.ReadAll(res.Body)
-				require.NoError(t, err)
-
-				shortURL := string(resBody)
-				shortURLParts := strings.Split(shortURL, "/")
-
-				id = shortURLParts[1]
-			}
-
-			request := httptest.NewRequest(http.MethodGet, "/{id}", nil)
 			w := httptest.NewRecorder()
 
-			rctx := chi.NewRouteContext()
-			rctx.URLParams.Add("id", id)
+			if testCase.PrepareServiceFunc != nil {
+				testCase.PrepareServiceFunc(r.Context())
+			}
 
-			request = request.WithContext(context.WithValue(request.Context(), chi.RouteCtxKey, rctx))
-
-			handler.RedirectToURLByID(w, request)
+			handler.GetMyURLs(w, r)
 
 			res := w.Result()
-
-			assert.Equal(t, test.want.code, res.StatusCode)
 			defer res.Body.Close()
+
+			assert.Equal(t, testCase.ExpectedStatusCode, res.StatusCode)
+		})
+	}
+}
+
+func TestDeleteURLs(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	urlStorage := handlersmock.NewMockURLStorage(ctrl)
+	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
+	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	userID := "1"
+
+	handler := NewShortenerHandler(
+		&config.AppConfig{},
+		urlStorage,
+		stringsGenerator,
+		deleteQueue,
+	)
+
+	type TestCase struct {
+		Name               string
+		Body               dtos.DeleteURLsRequest
+		PrepareServiceFunc func(
+			ctx context.Context,
+		)
+		ExpectedStatusCode int
+	}
+
+	testCases := []TestCase{
+		{
+			Name: "valid",
+			Body: dtos.DeleteURLsRequest{"123", "1234"},
+			PrepareServiceFunc: func(ctx context.Context) {
+				deleteQueue.
+					EXPECT().
+					Push(gomock.Any())
+			},
+			ExpectedStatusCode: http.StatusAccepted,
+		},
+		{
+			Name:               "nil body",
+			Body:               nil,
+			PrepareServiceFunc: nil,
+			ExpectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			Name:               "invalid body",
+			Body:               dtos.DeleteURLsRequest{},
+			PrepareServiceFunc: nil,
+			ExpectedStatusCode: http.StatusBadRequest,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			var rawBody []byte
+			var err error
+
+			if testCase.Body != nil {
+				rawBody, err = json.Marshal(testCase.Body)
+				require.NoError(t, err)
+			}
+
+			r := httptest.NewRequest(http.MethodDelete, "/", bytes.NewReader(rawBody))
+			ctx := contextUtil.SetUserIDToContext(r.Context(), userID)
+			r = r.WithContext(ctx)
+
+			w := httptest.NewRecorder()
+
+			if testCase.PrepareServiceFunc != nil {
+				testCase.PrepareServiceFunc(r.Context())
+			}
+
+			handler.DeleteURLs(w, r)
+
+			res := w.Result()
+			defer res.Body.Close()
+
+			assert.Equal(t, testCase.ExpectedStatusCode, res.StatusCode)
+		})
+	}
+}
+
+func TestRedirectToURLByID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	urlStorage := handlersmock.NewMockURLStorage(ctrl)
+	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
+	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+
+	handler := NewShortenerHandler(
+		&config.AppConfig{},
+		urlStorage,
+		stringsGenerator,
+		deleteQueue,
+	)
+
+	type TestCase struct {
+		Name               string
+		Body               string
+		PrepareServiceFunc func(
+			ctx context.Context,
+			body string,
+		)
+		ExpectedStatusCode int
+	}
+
+	testCases := []TestCase{
+		{
+			Name: "valid",
+			Body: "1234",
+			PrepareServiceFunc: func(ctx context.Context, body string) {
+				urlStorage.
+					EXPECT().
+					GetByShortURL(ctx, body).
+					Return(&models.ShortenedURL{}, nil)
+			},
+			ExpectedStatusCode: http.StatusTemporaryRedirect,
+		},
+		{
+			Name: "invalid",
+			Body: "1234",
+			PrepareServiceFunc: func(ctx context.Context, body string) {
+				urlStorage.
+					EXPECT().
+					GetByShortURL(ctx, body).
+					Return(nil, errors.New("undefined behavior"))
+			},
+			ExpectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			Name: "delete url",
+			Body: "1234",
+			PrepareServiceFunc: func(ctx context.Context, body string) {
+				urlStorage.
+					EXPECT().
+					GetByShortURL(ctx, body).
+					Return(&models.ShortenedURL{IsDeleted: true}, nil)
+			},
+			ExpectedStatusCode: http.StatusGone,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(testCase.Body))
+			r.Header.Set("Content-Type", "text/plain")
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("id", testCase.Body)
+			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+			w := httptest.NewRecorder()
+
+			if testCase.PrepareServiceFunc != nil {
+				testCase.PrepareServiceFunc(r.Context(), testCase.Body)
+			}
+
+			handler.RedirectToURLByID(w, r)
+
+			res := w.Result()
+			defer res.Body.Close()
+
+			assert.Equal(t, testCase.ExpectedStatusCode, res.StatusCode)
+		})
+	}
+}
+
+func TestPing(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	urlStorage := handlersmock.NewMockURLStorage(ctrl)
+	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
+	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+
+	handler := NewShortenerHandler(
+		&config.AppConfig{},
+		urlStorage,
+		stringsGenerator,
+		deleteQueue,
+	)
+
+	type TestCase struct {
+		Name               string
+		PrepareServiceFunc func(
+			ctx context.Context,
+		)
+		ExpectedStatusCode int
+	}
+
+	testCases := []TestCase{
+		{
+			Name: "valid",
+			PrepareServiceFunc: func(ctx context.Context) {
+				urlStorage.
+					EXPECT().
+					Ping(ctx).
+					Return(nil)
+			},
+			ExpectedStatusCode: http.StatusOK,
+		},
+		{
+			Name: "not valid",
+			PrepareServiceFunc: func(ctx context.Context) {
+				urlStorage.
+					EXPECT().
+					Ping(ctx).
+					Return(errors.New("undefined behavior"))
+			},
+			ExpectedStatusCode: http.StatusInternalServerError,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, "/", nil)
+			w := httptest.NewRecorder()
+
+			if testCase.PrepareServiceFunc != nil {
+				testCase.PrepareServiceFunc(r.Context())
+			}
+
+			handler.Ping(w, r)
+
+			res := w.Result()
+			defer res.Body.Close()
+
+			assert.Equal(t, testCase.ExpectedStatusCode, res.StatusCode)
 		})
 	}
 }

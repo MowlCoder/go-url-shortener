@@ -25,7 +25,7 @@ func (storage *InMemoryStorage) GetByShortURL(ctx context.Context, shortURL stri
 		return &url, nil
 	}
 
-	return nil, errorURLNotFound
+	return nil, domain.ErrURLNotFound
 }
 
 func (storage *InMemoryStorage) GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error) {
@@ -47,14 +47,14 @@ func (storage *InMemoryStorage) FindByOriginalURL(ctx context.Context, originalU
 		}
 	}
 
-	return models.ShortenedURL{}, ErrNotFound
+	return models.ShortenedURL{}, domain.ErrURLNotFound
 }
 
 func (storage *InMemoryStorage) SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error) {
 	shortenedURL, err := storage.FindByOriginalURL(ctx, dto.OriginalURL)
 
 	if err == nil {
-		return &shortenedURL, ErrRowConflict
+		return &shortenedURL, domain.ErrURLConflict
 	}
 
 	storage.structure[dto.ShortURL] = models.ShortenedURL{
@@ -74,7 +74,7 @@ func (storage *InMemoryStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 	for _, dto := range dtos {
 		shortenedURL, err := storage.SaveURL(ctx, dto)
 
-		if err != nil && !errors.Is(err, ErrRowConflict) {
+		if err != nil && !errors.Is(err, domain.ErrURLConflict) {
 			return nil, err
 		}
 

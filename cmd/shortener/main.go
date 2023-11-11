@@ -63,7 +63,7 @@ func main() {
 		deleteURLQueue,
 	)
 
-	deleteURLQueue.Start(context.Background())
+	go deleteURLQueue.Start(context.Background())
 
 	mux := chi.NewRouter()
 
@@ -84,6 +84,8 @@ func main() {
 	mux.Get("/api/user/urls", shortenerHandler.GetMyURLs)
 	mux.Get("/ping", shortenerHandler.Ping)
 	mux.Get("/{id}", shortenerHandler.RedirectToURLByID)
+
+	mux.Mount("/debug", middleware.Profiler())
 
 	fmt.Println("URL Shortener server is running on", appConfig.BaseHTTPAddr)
 	fmt.Println("Config:", appConfig)

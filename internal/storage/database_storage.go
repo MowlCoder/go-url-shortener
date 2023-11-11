@@ -40,10 +40,15 @@ func NewDatabaseStorage(databaseDNS string) (*DatabaseStorage, error) {
 }
 
 func (storage *DatabaseStorage) GetByShortURL(ctx context.Context, shortURL string) (*models.ShortenedURL, error) {
-	row := storage.pool.QueryRow(ctx, "SELECT id, short_url, original_url, is_deleted FROM shorten_url WHERE short_url = $1", shortURL)
+	query := `
+		SELECT id, short_url, original_url, is_deleted
+		FROM shorten_url
+		WHERE short_url = $1
+	`
+	row := storage.pool.QueryRow(ctx, query, shortURL)
 
 	if row == nil {
-		return nil, errorURLNotFound
+		return nil, domain.ErrURLNotFound
 	}
 
 	shortenedURL := models.ShortenedURL{}
@@ -57,8 +62,13 @@ func (storage *DatabaseStorage) GetByShortURL(ctx context.Context, shortURL stri
 
 func (storage *DatabaseStorage) GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error) {
 	urls := make([]models.ShortenedURL, 0)
+	query := `
+		SELECT id, short_url, user_id, original_url
+		FROM shorten_url
+		WHERE user_id = $1
+	`
 
-	rows, err := storage.pool.Query(ctx, "SELECT id, short_url, user_id, original_url FROM shorten_url WHERE user_id = $1", userID)
+	rows, err := storage.pool.Query(ctx, query, userID)
 
 	if err != nil {
 		return nil, err
@@ -82,13 +92,14 @@ func (storage *DatabaseStorage) GetURLsByUserID(ctx context.Context, userID stri
 }
 
 func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error) {
+	query := `
+		INSERT INTO shorten_url (short_url, original_url, user_id) VALUES ($1, $2, $3)
+		ON CONFLICT (original_url) DO UPDATE SET original_url = EXCLUDED.original_url
+		RETURNING id, short_url, user_id, original_url;
+	`
 	row := storage.pool.QueryRow(
 		ctx,
-		`
-			INSERT INTO shorten_url (short_url, original_url, user_id) VALUES ($1, $2, $3)
-			ON CONFLICT (original_url) DO UPDATE SET original_url = EXCLUDED.original_url
-			RETURNING id, short_url, user_id, original_url;
-		`,
+		query,
 		dto.ShortURL, dto.OriginalURL, dto.UserID,
 	)
 
@@ -98,14 +109,14 @@ func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShor
 		var pgErr *pgconn.PgError
 
 		if errors.As(err, &pgErr) && pgErr.Code == PgUniqueIndexErrorCode {
-			return nil, ErrShortURLConflict
+			return nil, domain.ErrShortURLConflict
 		}
 
 		return nil, err
 	}
 
 	if dto.ShortURL != shortenedURL.ShortURL {
-		return &shortenedURL, ErrRowConflict
+		return &shortenedURL, domain.ErrURLConflict
 	}
 
 	return &shortenedURL, nil
@@ -122,10 +133,15 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 
 	batch := &pgx.Batch{}
 	originalURLs := make([]string, 0, len(dtos))
+	query := `
+		INSERT INTO shorten_url (short_url, original_url, user_id)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (original_url) DO NOTHING
+	`
 
 	for _, dto := range dtos {
 		batch.Queue(
-			"INSERT INTO shorten_url (short_url, original_url, user_id) VALUES ($1, $2, $3) ON CONFLICT (original_url) DO NOTHING",
+			query,
 			dto.ShortURL, dto.OriginalURL, dto.UserID,
 		)
 		originalURLs = append(originalURLs, dto.OriginalURL)
@@ -137,9 +153,14 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 		return nil, err
 	}
 
+	query = `
+		SELECT id, short_url, user_id, original_url
+		FROM shorten_url
+		WHERE original_url = ANY($1)
+	`
 	rows, err := tx.Query(
 		ctx,
-		"SELECT id, short_url, user_id, original_url FROM shorten_url WHERE original_url = ANY($1)",
+		query,
 		originalURLs,
 	)
 
@@ -171,9 +192,14 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 }
 
 func (storage *DatabaseStorage) DeleteByShortURLs(ctx context.Context, shortURLs []string, userID string) error {
+	query := `
+		UPDATE shorten_url
+		SET is_deleted = TRUE
+	   	WHERE user_id = $1 AND short_url = ANY($2)
+	`
 	_, err := storage.pool.Exec(
 		ctx,
-		"UPDATE shorten_url SET is_deleted = TRUE WHERE user_id = $1 AND short_url = ANY($2)",
+		query,
 		userID, shortURLs,
 	)
 	return err
@@ -182,9 +208,15 @@ func (storage *DatabaseStorage) DeleteByShortURLs(ctx context.Context, shortURLs
 func (storage *DatabaseStorage) DoDeleteURLTasks(ctx context.Context, tasks []domain.DeleteURLsTask) error {
 	batch := &pgx.Batch{}
 
+	query := `
+		UPDATE shorten_url
+		SET is_deleted = TRUE
+		WHERE user_id = $1 AND short_url = ANY($2)
+	`
+
 	for _, task := range tasks {
 		batch.Queue(
-			"UPDATE shorten_url SET is_deleted = TRUE WHERE user_id = $1 AND short_url = ANY($2)",
+			query,
 			task.UserID, task.ShortURLs,
 		)
 	}

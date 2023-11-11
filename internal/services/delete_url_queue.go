@@ -34,23 +34,22 @@ func NewDeleteURLQueue(urlStorage URLStorage, logger Logger, maxWorker int) *Del
 
 func (q *DeleteURLQueue) Start(ctx context.Context) {
 	ticker := time.NewTicker(time.Second * 5)
+	defer ticker.Stop()
 
-	go func() {
-		for {
-			select {
-			case task := <-q.ch:
-				q.tasks = append(q.tasks, *task)
-			case <-ctx.Done():
-				if err := q.doDeleteTasks(); err != nil {
-					q.logger.Info(err.Error())
-				}
-			case <-ticker.C:
-				if err := q.doDeleteTasks(); err != nil {
-					q.logger.Info(err.Error())
-				}
+	for {
+		select {
+		case task := <-q.ch:
+			q.tasks = append(q.tasks, *task)
+		case <-ctx.Done():
+			if err := q.doDeleteTasks(); err != nil {
+				q.logger.Info(err.Error())
+			}
+		case <-ticker.C:
+			if err := q.doDeleteTasks(); err != nil {
+				q.logger.Info(err.Error())
 			}
 		}
-	}()
+	}
 }
 
 func (q *DeleteURLQueue) Push(task *domain.DeleteURLsTask) {

@@ -49,7 +49,7 @@ func TestFileStorage_SaveURL(t *testing.T) {
 			UserID:      "1",
 		})
 
-		assert.ErrorIs(t, err, ErrRowConflict)
+		assert.ErrorIs(t, err, domain.ErrURLConflict)
 		assert.Equal(t, secondShortenedURL.ShortURL, shortenedURL.ShortURL)
 	})
 }

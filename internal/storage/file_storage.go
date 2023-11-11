@@ -40,7 +40,7 @@ func (storage *FileStorage) GetByShortURL(ctx context.Context, shortURL string) 
 		return &url, nil
 	}
 
-	return nil, errorURLNotFound
+	return nil, domain.ErrURLNotFound
 }
 
 func (storage *FileStorage) GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error) {
@@ -62,14 +62,14 @@ func (storage *FileStorage) FindByOriginalURL(ctx context.Context, originalURL s
 		}
 	}
 
-	return nil, ErrNotFound
+	return nil, domain.ErrURLNotFound
 }
 
 func (storage *FileStorage) SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error) {
 	shortenedURL, err := storage.FindByOriginalURL(ctx, dto.OriginalURL)
 
 	if err == nil {
-		return shortenedURL, ErrRowConflict
+		return shortenedURL, domain.ErrURLConflict
 	}
 
 	shortenedURL = &models.ShortenedURL{
