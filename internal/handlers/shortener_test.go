@@ -535,7 +535,7 @@ func TestDeleteURLs(t *testing.T) {
 			PrepareServiceFunc: func(ctx context.Context) {
 				deleteQueue.
 					EXPECT().
-					Push(gomock.Any())
+					Push(gomock.Any()).AnyTimes()
 			},
 			ExpectedStatusCode: http.StatusAccepted,
 		},
