@@ -2,16 +2,20 @@ package storage
 
 import (
 	"context"
+	"database/sql"
+	"embed"
 	"errors"
-	"time"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pressly/goose/v3"
 
 	"github.com/MowlCoder/go-url-shortener/internal/domain"
 	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
 )
+
+//go:embed migrations/*.sql
+var embedMigrations embed.FS
 
 type DatabaseStorage struct {
 	pool *pgxpool.Pool
@@ -32,7 +36,7 @@ func NewDatabaseStorage(databaseDNS string) (*DatabaseStorage, error) {
 		pool: dbpool,
 	}
 
-	if err := dbStorage.bootstrap(); err != nil {
+	if err := dbStorage.runMigrations(databaseDNS); err != nil {
 		return nil, err
 	}
 
@@ -229,31 +233,23 @@ func (storage *DatabaseStorage) Ping(ctx context.Context) error {
 	return storage.pool.Ping(ctx)
 }
 
-func (storage *DatabaseStorage) bootstrap() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-
-	defer cancel()
-
-	tx, err := storage.pool.Begin(ctx)
-
+func (storage *DatabaseStorage) runMigrations(databaseDNS string) error {
+	db, err := sql.Open("pgx", databaseDNS)
 	if err != nil {
 		return err
 	}
 
-	defer tx.Rollback(ctx)
+	defer db.Close()
 
-	tx.Exec(ctx, `
-		CREATE TABLE IF NOT EXISTS shorten_url (
-	  		id serial PRIMARY KEY,
-	  		short_url VARCHAR ( 20 ) UNIQUE NOT NULL,
-	  		original_url TEXT NOT NULL,
-	  		user_id VARCHAR( 100 ) NOT NULL,
-	  		created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-		   	is_deleted BOOLEAN DEFAULT FALSE
-		)
-	`)
-	tx.Exec(ctx, `CREATE UNIQUE INDEX IF NOT EXISTS short_url_idx ON shorten_url (short_url)`)
-	tx.Exec(ctx, `CREATE UNIQUE INDEX IF NOT EXISTS original_url_idx ON shorten_url (original_url)`)
+	goose.SetBaseFS(embedMigrations)
 
-	return tx.Commit(ctx)
+	if err := goose.SetDialect("postgres"); err != nil {
+		return err
+	}
+
+	if err := goose.Up(db, "migrations"); err != nil {
+		return err
+	}
+
+	return nil
 }
