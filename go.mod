@@ -11,6 +11,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/pressly/goose/v3 v3.15.1
 	github.com/stretchr/testify v1.8.4
+	github.com/swaggo/swag v1.16.2
 	go.uber.org/mock v0.3.0
 	go.uber.org/zap v1.25.0
 )
@@ -31,7 +32,6 @@ require (
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
-	github.com/swaggo/swag v1.16.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.13.0 // indirect
 	golang.org/x/net v0.15.0 // indirect
