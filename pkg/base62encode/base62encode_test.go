@@ -1,4 +1,4 @@
-package util
+package base62encode
 
 import (
 	"math/rand"

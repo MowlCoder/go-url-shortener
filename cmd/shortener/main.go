@@ -63,8 +63,33 @@ func main() {
 		deleteURLQueue,
 	)
 
+	router := makeRouter(
+		shortenerHandler,
+		userService,
+		customLogger,
+		gzipWriter,
+	)
+
 	go deleteURLQueue.Start(context.Background())
 
+	fmt.Println("URL Shortener server is running on", appConfig.BaseHTTPAddr)
+	fmt.Println("Config:", appConfig)
+
+	if err := http.ListenAndServe(appConfig.BaseHTTPAddr, router); err != nil {
+		panic(err)
+	}
+}
+
+// @title URL shortener
+// @version 1.0
+// @description URL shortener helps to work with long urls, allow to save your long url and give you a small url, that point to your long url
+// @BasePath /
+func makeRouter(
+	shortenerHandler *handlers.ShortenerHandler,
+	userService *services.UserService,
+	customLogger *logger.Logger,
+	gzipWriter *gzip.Writer,
+) http.Handler {
 	mux := chi.NewRouter()
 
 	mux.Use(middleware.RealIP)
@@ -85,12 +110,5 @@ func main() {
 	mux.Get("/ping", shortenerHandler.Ping)
 	mux.Get("/{id}", shortenerHandler.RedirectToURLByID)
 
-	mux.Mount("/debug", middleware.Profiler())
-
-	fmt.Println("URL Shortener server is running on", appConfig.BaseHTTPAddr)
-	fmt.Println("Config:", appConfig)
-
-	if err := http.ListenAndServe(appConfig.BaseHTTPAddr, mux); err != nil {
-		panic(err)
-	}
+	return mux
 }
