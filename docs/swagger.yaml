@@ -1,0 +1,190 @@
+basePath: /
+definitions:
+  dtos.ShortBatchURLDto:
+    properties:
+      correlation_id:
+        type: string
+      original_url:
+        type: string
+    type: object
+  dtos.ShortBatchURLResponse:
+    properties:
+      correlation_id:
+        type: string
+      short_url:
+        type: string
+    type: object
+  dtos.ShortURLDto:
+    properties:
+      url:
+        type: string
+    type: object
+  dtos.ShortURLResponse:
+    properties:
+      result:
+        type: string
+    type: object
+  dtos.UserURLsResponse:
+    properties:
+      original_url:
+        type: string
+      short_url:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: URL shortener helps to work with long urls, allow to save your long
+    url and give you a small url, that point to your long url
+  title: URL shortener
+  version: "1.0"
+paths:
+  /:
+    post:
+      consumes:
+      - text/plain
+      parameters:
+      - description: Short url
+        in: body
+        name: dto
+        required: true
+        schema:
+          type: string
+      produces:
+      - text/plain
+      responses:
+        "201":
+          description: Shortened url
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "409":
+          description: Shortened url
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+      summary: Short url (Text)
+  /{id}:
+    get:
+      parameters:
+      - description: Short URL ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "307":
+          description: Temporary Redirect
+        "400":
+          description: Bad Request
+        "410":
+          description: Gone
+      summary: Redirect from short url to original url
+  /api/shorten:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Short url
+        in: body
+        name: dto
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.ShortURLDto'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dtos.ShortURLResponse'
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/dtos.ShortURLResponse'
+        "500":
+          description: Internal Server Error
+      summary: Short url (JSON)
+  /api/shorten/batch:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Short batch urls
+        in: body
+        name: dto
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/dtos.ShortBatchURLDto'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            items:
+              $ref: '#/definitions/dtos.ShortBatchURLResponse'
+            type: array
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      summary: Short batch urls
+  /api/user/urls:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Delete user urls
+        in: body
+        name: dto
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      responses:
+        "202":
+          description: Accepted
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+      summary: Delete user urls
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dtos.UserURLsResponse'
+            type: array
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      summary: Get user urls
+  /ping:
+    get:
+      responses:
+        "200":
+          description: OK
+        "500":
+          description: Internal Server Error
+      summary: Checking if server isn't down
+swagger: "2.0"

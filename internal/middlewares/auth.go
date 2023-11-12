@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/MowlCoder/go-url-shortener/internal/context"
-	"github.com/MowlCoder/go-url-shortener/internal/handlers"
 	"github.com/MowlCoder/go-url-shortener/internal/jwt"
+	"github.com/MowlCoder/go-url-shortener/pkg/httputil"
 )
 
 type UserService interface {
@@ -29,7 +29,7 @@ func authHandler(w http.ResponseWriter, r *http.Request, handler http.Handler, u
 		tokenString, err = jwt.GenerateToken(userService.GenerateUniqueID())
 
 		if err != nil {
-			handlers.SendStatusCode(w, http.StatusInternalServerError)
+			httputil.SendStatusCode(w, http.StatusInternalServerError)
 			return
 		}
 
@@ -44,7 +44,7 @@ func authHandler(w http.ResponseWriter, r *http.Request, handler http.Handler, u
 	jwtClaim, err := jwt.ParseToken(tokenString)
 
 	if err != nil {
-		handlers.SendStatusCode(w, http.StatusUnauthorized)
+		httputil.SendStatusCode(w, http.StatusUnauthorized)
 		return
 	}
 

@@ -3,7 +3,7 @@ package services
 import (
 	"math/rand"
 
-	"github.com/MowlCoder/go-url-shortener/internal/util"
+	"github.com/MowlCoder/go-url-shortener/pkg/base62encode"
 )
 
 type StringGenerator struct {
@@ -14,5 +14,5 @@ func NewStringGenerator() *StringGenerator {
 }
 
 func (sg *StringGenerator) GenerateRandom() string {
-	return util.Base62Encode(rand.Uint64())
+	return base62encode.Base62Encode(rand.Uint64())
 }

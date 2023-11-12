@@ -16,9 +16,10 @@ import (
 	"github.com/MowlCoder/go-url-shortener/internal/domain"
 	"github.com/MowlCoder/go-url-shortener/internal/handlers/dtos"
 	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
+	"github.com/MowlCoder/go-url-shortener/pkg/httputil"
 )
 
-type URLStorage interface {
+type urlStorage interface {
 	SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]models.ShortenedURL, error)
 	SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error)
 	GetByShortURL(ctx context.Context, shortURL string) (*models.ShortenedURL, error)
@@ -27,26 +28,26 @@ type URLStorage interface {
 	Ping(ctx context.Context) error
 }
 
-type StringGeneratorService interface {
+type stringGeneratorService interface {
 	GenerateRandom() string
 }
 
-type DeleteURLQueue interface {
+type deleteURLQueue interface {
 	Push(task *domain.DeleteURLsTask)
 }
 
 type ShortenerHandler struct {
 	config          *config.AppConfig
-	urlStorage      URLStorage
-	stringGenerator StringGeneratorService
-	deleteURLQueue  DeleteURLQueue
+	urlStorage      urlStorage
+	stringGenerator stringGeneratorService
+	deleteURLQueue  deleteURLQueue
 }
 
 func NewShortenerHandler(
 	config *config.AppConfig,
-	urlStorage URLStorage,
-	stringGenerator StringGeneratorService,
-	deleteURLQueue DeleteURLQueue,
+	urlStorage urlStorage,
+	stringGenerator stringGeneratorService,
+	deleteURLQueue deleteURLQueue,
 ) *ShortenerHandler {
 	return &ShortenerHandler{
 		config:          config,
@@ -56,10 +57,21 @@ func NewShortenerHandler(
 	}
 }
 
+// ShortURLJSON godoc
+// @Summary Short url (JSON)
+// @Accept json
+// @Produce json
+// @Param dto body dtos.ShortURLDto true "Short url"
+// @Success 201 {object} dtos.ShortURLResponse
+// @Failure 400
+// @Failure 401
+// @Failure 409 {object} dtos.ShortURLResponse
+// @Failure 500
+// @Router /api/shorten [post]
 func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) {
 	userID, err := contextUtil.GetUserIDFromContext(r.Context())
 	if err != nil {
-		SendStatusCode(w, http.StatusUnauthorized)
+		httputil.SendStatusCode(w, http.StatusUnauthorized)
 		return
 	}
 
@@ -67,17 +79,17 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 	rawBody, err := io.ReadAll(r.Body)
 
 	if err != nil {
-		SendStatusCode(w, http.StatusBadRequest)
+		httputil.SendStatusCode(w, http.StatusBadRequest)
 		return
 	}
 
 	if err := json.Unmarshal(rawBody, &requestBody); err != nil {
-		SendStatusCode(w, http.StatusBadRequest)
+		httputil.SendStatusCode(w, http.StatusBadRequest)
 		return
 	}
 
 	if requestBody.URL == "" {
-		SendStatusCode(w, http.StatusBadRequest)
+		httputil.SendStatusCode(w, http.StatusBadRequest)
 		return
 	}
 
@@ -89,26 +101,36 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 	})
 
 	if errors.Is(err, domain.ErrURLConflict) {
-		SendJSONResponse(w, http.StatusConflict, dtos.ShortURLResponse{
+		httputil.SendJSONResponse(w, http.StatusConflict, dtos.ShortURLResponse{
 			Result: fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL),
 		})
 		return
 	}
 
 	if err != nil {
-		SendStatusCode(w, http.StatusInternalServerError)
+		httputil.SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
 
-	SendJSONResponse(w, http.StatusCreated, dtos.ShortURLResponse{
+	httputil.SendJSONResponse(w, http.StatusCreated, dtos.ShortURLResponse{
 		Result: fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL),
 	})
 }
 
+// ShortBatchURL godoc
+// @Summary Short batch urls
+// @Accept json
+// @Produce json
+// @Param dto body []dtos.ShortBatchURLDto true "Short batch urls"
+// @Success 201 {array} dtos.ShortBatchURLResponse
+// @Failure 400
+// @Failure 401
+// @Failure 500
+// @Router /api/shorten/batch [post]
 func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request) {
 	userID, err := contextUtil.GetUserIDFromContext(r.Context())
 	if err != nil {
-		SendStatusCode(w, http.StatusUnauthorized)
+		httputil.SendStatusCode(w, http.StatusUnauthorized)
 		return
 	}
 
@@ -116,17 +138,17 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 	rawBody, err := io.ReadAll(r.Body)
 
 	if err != nil {
-		SendStatusCode(w, http.StatusBadRequest)
+		httputil.SendStatusCode(w, http.StatusBadRequest)
 		return
 	}
 
 	if err := json.Unmarshal(rawBody, &requestBody); err != nil {
-		SendStatusCode(w, http.StatusBadRequest)
+		httputil.SendStatusCode(w, http.StatusBadRequest)
 		return
 	}
 
 	if len(requestBody) == 0 {
-		SendStatusCode(w, http.StatusBadRequest)
+		httputil.SendStatusCode(w, http.StatusBadRequest)
 		return
 	}
 
@@ -146,7 +168,7 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 
 	if err != nil {
 		log.Println(err)
-		SendStatusCode(w, http.StatusInternalServerError)
+		httputil.SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
 
@@ -161,25 +183,36 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 		})
 	}
 
-	SendJSONResponse(w, 201, responseBody)
+	httputil.SendJSONResponse(w, 201, responseBody)
 }
 
+// ShortURL godoc
+// @Summary Short url (Text)
+// @Accept plain
+// @Produce plain
+// @Param dto body string true "Short url"
+// @Success 201 {string} string "Shortened url"
+// @Failure 400
+// @Failure 401
+// @Failure 409 {string} string "Shortened url"
+// @Failure 500
+// @Router / [post]
 func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 	userID, err := contextUtil.GetUserIDFromContext(r.Context())
 	if err != nil {
-		SendStatusCode(w, http.StatusUnauthorized)
+		httputil.SendStatusCode(w, http.StatusUnauthorized)
 		return
 	}
 
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
-		SendStatusCode(w, http.StatusBadRequest)
+		httputil.SendStatusCode(w, http.StatusBadRequest)
 		return
 	}
 
 	if len(body) == 0 {
-		SendStatusCode(w, http.StatusBadRequest)
+		httputil.SendStatusCode(w, http.StatusBadRequest)
 		return
 	}
 
@@ -191,34 +224,42 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if errors.Is(err, domain.ErrURLConflict) {
-		SendTextResponse(w, http.StatusConflict, fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL))
+		httputil.SendTextResponse(w, http.StatusConflict, fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL))
 		return
 	}
 
 	if err != nil {
-		SendStatusCode(w, http.StatusInternalServerError)
+		httputil.SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
 
-	SendTextResponse(w, http.StatusCreated, fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL))
+	httputil.SendTextResponse(w, http.StatusCreated, fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL))
 }
 
+// GetMyURLs godoc
+// @Summary Get user urls
+// @Produce json
+// @Success 200 {array} dtos.UserURLsResponse
+// @Success 204
+// @Failure 401
+// @Failure 500
+// @Router /api/user/urls [get]
 func (h *ShortenerHandler) GetMyURLs(w http.ResponseWriter, r *http.Request) {
 	userID, err := contextUtil.GetUserIDFromContext(r.Context())
 	if err != nil {
-		SendStatusCode(w, http.StatusUnauthorized)
+		httputil.SendStatusCode(w, http.StatusUnauthorized)
 		return
 	}
 
 	urls, err := h.urlStorage.GetURLsByUserID(r.Context(), userID)
 
 	if err != nil {
-		SendStatusCode(w, http.StatusInternalServerError)
+		httputil.SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
 
 	if len(urls) == 0 {
-		SendStatusCode(w, http.StatusNoContent)
+		httputil.SendStatusCode(w, http.StatusNoContent)
 		return
 	}
 
@@ -231,13 +272,21 @@ func (h *ShortenerHandler) GetMyURLs(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	SendJSONResponse(w, 200, responseURLs)
+	httputil.SendJSONResponse(w, 200, responseURLs)
 }
 
+// DeleteURLs godoc
+// @Summary Delete user urls
+// @Accept json
+// @Param dto body dtos.DeleteURLsRequest true "Delete user urls"
+// @Success 202
+// @Failure 400
+// @Failure 401
+// @Router /api/user/urls [delete]
 func (h *ShortenerHandler) DeleteURLs(w http.ResponseWriter, r *http.Request) {
 	userID, err := contextUtil.GetUserIDFromContext(r.Context())
 	if err != nil {
-		SendStatusCode(w, http.StatusUnauthorized)
+		httputil.SendStatusCode(w, http.StatusUnauthorized)
 		return
 	}
 
@@ -245,17 +294,17 @@ func (h *ShortenerHandler) DeleteURLs(w http.ResponseWriter, r *http.Request) {
 	rawBody, err := io.ReadAll(r.Body)
 
 	if err != nil {
-		SendStatusCode(w, http.StatusBadRequest)
+		httputil.SendStatusCode(w, http.StatusBadRequest)
 		return
 	}
 
 	if err := json.Unmarshal(rawBody, &requestBody); err != nil {
-		SendStatusCode(w, http.StatusBadRequest)
+		httputil.SendStatusCode(w, http.StatusBadRequest)
 		return
 	}
 
 	if len(requestBody) == 0 {
-		SendStatusCode(w, http.StatusBadRequest)
+		httputil.SendStatusCode(w, http.StatusBadRequest)
 		return
 	}
 
@@ -264,31 +313,43 @@ func (h *ShortenerHandler) DeleteURLs(w http.ResponseWriter, r *http.Request) {
 		UserID:    userID,
 	})
 
-	SendStatusCode(w, http.StatusAccepted)
+	httputil.SendStatusCode(w, http.StatusAccepted)
 }
 
+// RedirectToURLByID godoc
+// @Summary Redirect from short url to original url
+// @Param id path string true "Short URL ID"
+// @Success 307
+// @Failure 400
+// @Failure 410
+// @Router /{id} [get]
 func (h *ShortenerHandler) RedirectToURLByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	originalURL, err := h.urlStorage.GetByShortURL(r.Context(), id)
 
 	if err != nil {
-		SendStatusCode(w, http.StatusBadRequest)
+		httputil.SendStatusCode(w, http.StatusBadRequest)
 		return
 	}
 
 	if originalURL.IsDeleted {
-		SendStatusCode(w, http.StatusGone)
+		httputil.SendStatusCode(w, http.StatusGone)
 		return
 	}
 
-	SendRedirectResponse(w, originalURL.OriginalURL)
+	httputil.SendRedirectResponse(w, originalURL.OriginalURL)
 }
 
+// Ping godoc
+// @Summary Checking if server isn't down
+// @Success 200
+// @Failure 500
+// @Router /ping [get]
 func (h *ShortenerHandler) Ping(w http.ResponseWriter, r *http.Request) {
 	if err := h.urlStorage.Ping(r.Context()); err != nil {
-		SendStatusCode(w, http.StatusInternalServerError)
+		httputil.SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}
 
-	SendStatusCode(w, http.StatusOK)
+	httputil.SendStatusCode(w, http.StatusOK)
 }
