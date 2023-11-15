@@ -24,7 +24,7 @@ type DeleteURLQueue struct {
 	tasks      []domain.DeleteURLsTask
 }
 
-// NewDeleteURLQueue is construction function to create DeleteURLQueue.
+// NewDeleteURLQueue is contructor function to create DeleteURLQueue.
 func NewDeleteURLQueue(urlStorage urlStorage, logger logger, maxWorker int) *DeleteURLQueue {
 	return &DeleteURLQueue{
 		urlStorage: urlStorage,

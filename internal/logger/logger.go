@@ -20,7 +20,7 @@ const (
 	LogInfo = "INFO"
 )
 
-// NewLogger is construction function to create Logger with Options.
+// NewLogger is contructor function to create Logger with Options.
 func NewLogger(options Options) (*Logger, error) {
 	atomicLevel, err := zap.ParseAtomicLevel(options.Level)
 

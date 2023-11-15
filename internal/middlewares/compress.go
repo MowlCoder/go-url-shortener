@@ -89,7 +89,7 @@ type CompressMiddleware struct {
 	wr writerResetter
 }
 
-// NewCompressMiddleware is construction function to create CompressMiddleware.
+// NewCompressMiddleware is contructor function to create CompressMiddleware.
 func NewCompressMiddleware(writerResetter writerResetter) *CompressMiddleware {
 	compressor := CompressMiddleware{}
 	compressor.wr = writerResetter

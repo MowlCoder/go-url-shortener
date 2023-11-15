@@ -19,7 +19,7 @@ import (
 	"github.com/MowlCoder/go-url-shortener/pkg/httputil"
 )
 
-type urlStorage interface {
+type urlStorageForHandler interface {
 	SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]models.ShortenedURL, error)
 	SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error)
 	GetByShortURL(ctx context.Context, shortURL string) (*models.ShortenedURL, error)
@@ -39,15 +39,15 @@ type deleteURLQueue interface {
 // ShortenerHandler contains handlers that responsible for handling http request and give proper http response.
 type ShortenerHandler struct {
 	config          *config.AppConfig
-	urlStorage      urlStorage
+	urlStorage      urlStorageForHandler
 	stringGenerator stringGeneratorService
 	deleteURLQueue  deleteURLQueue
 }
 
-// NewShortenerHandler is construction function for ShortenerHandler.
+// NewShortenerHandler is contructor function for ShortenerHandler.
 func NewShortenerHandler(
 	config *config.AppConfig,
-	urlStorage urlStorage,
+	urlStorage urlStorageForHandler,
 	stringGenerator stringGeneratorService,
 	deleteURLQueue deleteURLQueue,
 ) *ShortenerHandler {
