@@ -36,6 +36,7 @@ type deleteURLQueue interface {
 	Push(task *domain.DeleteURLsTask)
 }
 
+// ShortenerHandler contains handlers that responsible for handling http request and give proper http response.
 type ShortenerHandler struct {
 	config          *config.AppConfig
 	urlStorage      urlStorage
@@ -43,6 +44,7 @@ type ShortenerHandler struct {
 	deleteURLQueue  deleteURLQueue
 }
 
+// NewShortenerHandler is construction function for ShortenerHandler.
 func NewShortenerHandler(
 	config *config.AppConfig,
 	urlStorage urlStorage,

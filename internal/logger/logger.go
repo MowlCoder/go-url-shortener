@@ -4,19 +4,23 @@ import (
 	"go.uber.org/zap"
 )
 
+// Logger for logging app activity.
 type Logger struct {
 	zapLogger *zap.Logger
 }
 
+// Options for setting up logger.
 type Options struct {
 	Level        string
 	IsProduction bool
 }
 
+// LogInfo Available log levels
 const (
 	LogInfo = "INFO"
 )
 
+// NewLogger is construction function to create Logger with Options.
 func NewLogger(options Options) (*Logger, error) {
 	atomicLevel, err := zap.ParseAtomicLevel(options.Level)
 
@@ -43,6 +47,7 @@ func NewLogger(options Options) (*Logger, error) {
 	}, nil
 }
 
+// Info put message to standard output.
 func (l Logger) Info(msg string) {
 	l.zapLogger.Info(msg)
 }
