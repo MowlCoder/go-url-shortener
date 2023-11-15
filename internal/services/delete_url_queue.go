@@ -8,22 +8,24 @@ import (
 	"github.com/MowlCoder/go-url-shortener/internal/domain"
 )
 
-type URLStorage interface {
+type urlStorage interface {
 	DoDeleteURLTasks(ctx context.Context, tasks []domain.DeleteURLsTask) error
 }
 
-type Logger interface {
+type logger interface {
 	Info(msg string)
 }
 
+// DeleteURLQueue responsible for accepting tasks for url deletion and do them in order.
 type DeleteURLQueue struct {
 	ch         chan *domain.DeleteURLsTask
-	urlStorage URLStorage
-	logger     Logger
+	urlStorage urlStorage
+	logger     logger
 	tasks      []domain.DeleteURLsTask
 }
 
-func NewDeleteURLQueue(urlStorage URLStorage, logger Logger, maxWorker int) *DeleteURLQueue {
+// NewDeleteURLQueue is construction function to create DeleteURLQueue.
+func NewDeleteURLQueue(urlStorage urlStorage, logger logger, maxWorker int) *DeleteURLQueue {
 	return &DeleteURLQueue{
 		urlStorage: urlStorage,
 		logger:     logger,
@@ -32,6 +34,7 @@ func NewDeleteURLQueue(urlStorage URLStorage, logger Logger, maxWorker int) *Del
 	}
 }
 
+// Start starts queue job. Queue accepting tasks through channel and every 5 seconds do tasks.
 func (q *DeleteURLQueue) Start(ctx context.Context) {
 	ticker := time.NewTicker(time.Second * 5)
 	defer ticker.Stop()
@@ -52,6 +55,7 @@ func (q *DeleteURLQueue) Start(ctx context.Context) {
 	}
 }
 
+// Push pushes task to queue.
 func (q *DeleteURLQueue) Push(task *domain.DeleteURLsTask) {
 	q.ch <- task
 }
