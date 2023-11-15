@@ -8,6 +8,7 @@ import (
 	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
 )
 
+// URLStorage is common interface for all storages.
 type URLStorage interface {
 	SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]models.ShortenedURL, error)
 	SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error)
@@ -18,6 +19,7 @@ type URLStorage interface {
 	Ping(ctx context.Context) error
 }
 
+// New create URLStorage base on given config.
 func New(appConfig *config.AppConfig) (URLStorage, error) {
 	if appConfig.DatabaseDSN != "" {
 		return NewDatabaseStorage(appConfig.DatabaseDSN)

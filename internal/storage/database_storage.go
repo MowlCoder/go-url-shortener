@@ -17,10 +17,12 @@ import (
 //go:embed migrations/*.sql
 var embedMigrations embed.FS
 
+// DatabaseStorage is storage that store all information in database. DB is PostgreSQL.
 type DatabaseStorage struct {
 	pool *pgxpool.Pool
 }
 
+// NewDatabaseStorage create database storage and run migrations.
 func NewDatabaseStorage(databaseDNS string) (*DatabaseStorage, error) {
 	dbpool, err := pgxpool.New(context.Background(), databaseDNS)
 
@@ -43,6 +45,7 @@ func NewDatabaseStorage(databaseDNS string) (*DatabaseStorage, error) {
 	return &dbStorage, nil
 }
 
+// GetByShortURL return model where short url equal given short url.
 func (storage *DatabaseStorage) GetByShortURL(ctx context.Context, shortURL string) (*models.ShortenedURL, error) {
 	query := `
 		SELECT id, short_url, original_url, is_deleted
@@ -64,6 +67,7 @@ func (storage *DatabaseStorage) GetByShortURL(ctx context.Context, shortURL stri
 	return &shortenedURL, nil
 }
 
+// GetURLsByUserID return list of models where user id equal given user id.
 func (storage *DatabaseStorage) GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error) {
 	urls := make([]models.ShortenedURL, 0)
 	query := `
@@ -95,6 +99,7 @@ func (storage *DatabaseStorage) GetURLsByUserID(ctx context.Context, userID stri
 	return urls, nil
 }
 
+// SaveURL save short url to the database.
 func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error) {
 	query := `
 		INSERT INTO shorten_url (short_url, original_url, user_id) VALUES ($1, $2, $3)
@@ -126,6 +131,7 @@ func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShor
 	return &shortenedURL, nil
 }
 
+// SaveSeveralURL save several short url to the database.
 func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]models.ShortenedURL, error) {
 	tx, err := storage.pool.Begin(ctx)
 
@@ -195,6 +201,7 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 	return shortenedURLs, nil
 }
 
+// DeleteByShortURLs delete short urls from the database.
 func (storage *DatabaseStorage) DeleteByShortURLs(ctx context.Context, shortURLs []string, userID string) error {
 	query := `
 		UPDATE shorten_url
@@ -209,6 +216,7 @@ func (storage *DatabaseStorage) DeleteByShortURLs(ctx context.Context, shortURLs
 	return err
 }
 
+// DoDeleteURLTasks execute delete tasks and save result to the database.
 func (storage *DatabaseStorage) DoDeleteURLTasks(ctx context.Context, tasks []domain.DeleteURLsTask) error {
 	batch := &pgx.Batch{}
 
@@ -229,6 +237,7 @@ func (storage *DatabaseStorage) DoDeleteURLTasks(ctx context.Context, tasks []do
 	return batchResult.Close()
 }
 
+// Ping check if storage is available.
 func (storage *DatabaseStorage) Ping(ctx context.Context) error {
 	return storage.pool.Ping(ctx)
 }

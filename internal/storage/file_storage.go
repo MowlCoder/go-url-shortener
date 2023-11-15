@@ -9,12 +9,14 @@ import (
 	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
 )
 
+// FileStorage is storage that store all information in file on disk.
 type FileStorage struct {
 	structure     map[string]models.ShortenedURL
 	file          *os.File
 	savingChanges bool
 }
 
+// NewFileStorage create file storage with file at given path.
 func NewFileStorage(fileStoragePath string) (*FileStorage, error) {
 	storage := FileStorage{
 		structure:     make(map[string]models.ShortenedURL),
@@ -35,6 +37,7 @@ func NewFileStorage(fileStoragePath string) (*FileStorage, error) {
 	return &storage, nil
 }
 
+// GetByShortURL return model where short url equal given short url.
 func (storage *FileStorage) GetByShortURL(ctx context.Context, shortURL string) (*models.ShortenedURL, error) {
 	if url, ok := storage.structure[shortURL]; ok {
 		return &url, nil
@@ -43,6 +46,7 @@ func (storage *FileStorage) GetByShortURL(ctx context.Context, shortURL string) 
 	return nil, domain.ErrURLNotFound
 }
 
+// GetURLsByUserID return list of models where user id equal given user id.
 func (storage *FileStorage) GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error) {
 	urls := make([]models.ShortenedURL, 0)
 
@@ -55,6 +59,7 @@ func (storage *FileStorage) GetURLsByUserID(ctx context.Context, userID string) 
 	return urls, nil
 }
 
+// FindByOriginalURL return model where original url equal given original url.
 func (storage *FileStorage) FindByOriginalURL(ctx context.Context, originalURL string) (*models.ShortenedURL, error) {
 	for _, value := range storage.structure {
 		if value.OriginalURL == originalURL {
@@ -65,6 +70,7 @@ func (storage *FileStorage) FindByOriginalURL(ctx context.Context, originalURL s
 	return nil, domain.ErrURLNotFound
 }
 
+// SaveURL save short url to the file on disk.
 func (storage *FileStorage) SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error) {
 	shortenedURL, err := storage.FindByOriginalURL(ctx, dto.OriginalURL)
 
@@ -86,6 +92,7 @@ func (storage *FileStorage) SaveURL(ctx context.Context, dto domain.SaveShortURL
 	return shortenedURL, nil
 }
 
+// SaveSeveralURL save several short url to the file on disk.
 func (storage *FileStorage) SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]models.ShortenedURL, error) {
 	shortenedURLs := make([]models.ShortenedURL, 0, len(dtos))
 
@@ -112,6 +119,7 @@ func (storage *FileStorage) SaveSeveralURL(ctx context.Context, dtos []domain.Sa
 	return shortenedURLs, nil
 }
 
+// DeleteByShortURLs delete short urls from the file on disk.
 func (storage *FileStorage) DeleteByShortURLs(ctx context.Context, shortURLs []string, userID string) error {
 	for _, shortURL := range shortURLs {
 		shortenedURL := storage.structure[shortURL]
@@ -131,6 +139,7 @@ func (storage *FileStorage) DeleteByShortURLs(ctx context.Context, shortURLs []s
 	return nil
 }
 
+// DoDeleteURLTasks execute delete tasks and save result to file.
 func (storage *FileStorage) DoDeleteURLTasks(ctx context.Context, tasks []domain.DeleteURLsTask) error {
 	for _, task := range tasks {
 		for _, shortURL := range task.ShortURLs {
@@ -152,6 +161,7 @@ func (storage *FileStorage) DoDeleteURLTasks(ctx context.Context, tasks []domain
 	return nil
 }
 
+// Ping check if storage is available.
 func (storage *FileStorage) Ping(ctx context.Context) error {
 	return nil
 }
