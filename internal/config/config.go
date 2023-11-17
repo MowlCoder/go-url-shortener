@@ -7,6 +7,8 @@ import (
 	"github.com/caarlos0/env/v9"
 )
 
+// AppConfig store configuration for http server, storage (file or database)
+// and configurable variables for application.
 type AppConfig struct {
 	BaseHTTPAddr     string `env:"SERVER_ADDRESS"`
 	BaseShortURLAddr string `env:"BASE_URL"`
@@ -15,11 +17,13 @@ type AppConfig struct {
 	DatabaseDSN      string `env:"DATABASE_DSN"`
 }
 
+// Available environments.
 const (
 	AppProductionEnv = "production"
 	AppDevEnv        = "development"
 )
 
+// ParseFlags firstly parse flags and set defaults, after try to parse variables from environment variables.
 func (appConfig *AppConfig) ParseFlags() {
 	flag.StringVar(&appConfig.BaseHTTPAddr, "a", "localhost:8080", "Base http address that server running on")
 	flag.StringVar(&appConfig.BaseShortURLAddr, "b", "http://localhost:8080", "Base short url address")

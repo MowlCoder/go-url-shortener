@@ -7,11 +7,13 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
+// Claims is JWT payload.
 type Claims struct {
 	jwt.RegisteredClaims
 	UserID string
 }
 
+// GenerateToken generate JWT token with payload containing given user id.
 func GenerateToken(userID string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -29,6 +31,7 @@ func GenerateToken(userID string) (string, error) {
 	return tokenString, nil
 }
 
+// ParseToken parsing JWT token and return JWT payload.
 func ParseToken(tokenString string) (*Claims, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {

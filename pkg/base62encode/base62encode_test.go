@@ -1,4 +1,4 @@
-package util
+package base62encode
 
 import (
 	"math/rand"
@@ -21,4 +21,12 @@ func TestBase62Encode(t *testing.T) {
 
 		assert.NotEmpty(t, encodedString)
 	})
+}
+
+func BenchmarkBase62Encode(b *testing.B) {
+	number := uint64(10326702548241138877)
+
+	for i := 0; i < b.N; i++ {
+		Base62Encode(number)
+	}
 }

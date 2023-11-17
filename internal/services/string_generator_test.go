@@ -14,3 +14,12 @@ func TestStringGenerator_GenerateRandom(t *testing.T) {
 		assert.NotEmpty(t, generatedString)
 	})
 }
+
+func BenchmarkStringGenerator_GenerateRandom(b *testing.B) {
+	stringGenerator := NewStringGenerator()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		stringGenerator.GenerateRandom()
+	}
+}

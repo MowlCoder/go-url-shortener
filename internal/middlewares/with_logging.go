@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type Logger interface {
+type logger interface {
 	Info(msg string)
 }
 
@@ -22,18 +22,21 @@ type (
 	}
 )
 
+// Write writes response and counts response size.
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := r.ResponseWriter.Write(b)
 	r.responseData.size += size
 	return size, err
 }
 
+// WriteHeader writes header and save status code.
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.responseData.status = statusCode
 }
 
-func WithLogging(handler http.Handler, logger Logger) http.Handler {
+// WithLogging is middleware to log request method, path and response size, status code, execution time.
+func WithLogging(handler http.Handler, logger logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 

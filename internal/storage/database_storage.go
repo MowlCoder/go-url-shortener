@@ -2,21 +2,27 @@ package storage
 
 import (
 	"context"
+	"database/sql"
+	"embed"
 	"errors"
-	"time"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pressly/goose/v3"
 
 	"github.com/MowlCoder/go-url-shortener/internal/domain"
 	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
 )
 
+//go:embed migrations/*.sql
+var embedMigrations embed.FS
+
+// DatabaseStorage is storage that store all information in database. DB is PostgreSQL.
 type DatabaseStorage struct {
 	pool *pgxpool.Pool
 }
 
+// NewDatabaseStorage create database storage and run migrations.
 func NewDatabaseStorage(databaseDNS string) (*DatabaseStorage, error) {
 	dbpool, err := pgxpool.New(context.Background(), databaseDNS)
 
@@ -32,18 +38,24 @@ func NewDatabaseStorage(databaseDNS string) (*DatabaseStorage, error) {
 		pool: dbpool,
 	}
 
-	if err := dbStorage.bootstrap(); err != nil {
+	if err := dbStorage.runMigrations(databaseDNS); err != nil {
 		return nil, err
 	}
 
 	return &dbStorage, nil
 }
 
+// GetByShortURL return model where short url equal given short url.
 func (storage *DatabaseStorage) GetByShortURL(ctx context.Context, shortURL string) (*models.ShortenedURL, error) {
-	row := storage.pool.QueryRow(ctx, "SELECT id, short_url, original_url, is_deleted FROM shorten_url WHERE short_url = $1", shortURL)
+	query := `
+		SELECT id, short_url, original_url, is_deleted
+		FROM shorten_url
+		WHERE short_url = $1
+	`
+	row := storage.pool.QueryRow(ctx, query, shortURL)
 
 	if row == nil {
-		return nil, errorURLNotFound
+		return nil, domain.ErrURLNotFound
 	}
 
 	shortenedURL := models.ShortenedURL{}
@@ -55,10 +67,16 @@ func (storage *DatabaseStorage) GetByShortURL(ctx context.Context, shortURL stri
 	return &shortenedURL, nil
 }
 
+// GetURLsByUserID return list of models where user id equal given user id.
 func (storage *DatabaseStorage) GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error) {
 	urls := make([]models.ShortenedURL, 0)
+	query := `
+		SELECT id, short_url, user_id, original_url
+		FROM shorten_url
+		WHERE user_id = $1
+	`
 
-	rows, err := storage.pool.Query(ctx, "SELECT id, short_url, user_id, original_url FROM shorten_url WHERE user_id = $1", userID)
+	rows, err := storage.pool.Query(ctx, query, userID)
 
 	if err != nil {
 		return nil, err
@@ -81,14 +99,16 @@ func (storage *DatabaseStorage) GetURLsByUserID(ctx context.Context, userID stri
 	return urls, nil
 }
 
+// SaveURL save short url to the database.
 func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error) {
+	query := `
+		INSERT INTO shorten_url (short_url, original_url, user_id) VALUES ($1, $2, $3)
+		ON CONFLICT (original_url) DO UPDATE SET original_url = EXCLUDED.original_url
+		RETURNING id, short_url, user_id, original_url;
+	`
 	row := storage.pool.QueryRow(
 		ctx,
-		`
-			INSERT INTO shorten_url (short_url, original_url, user_id) VALUES ($1, $2, $3)
-			ON CONFLICT (original_url) DO UPDATE SET original_url = EXCLUDED.original_url
-			RETURNING id, short_url, user_id, original_url;
-		`,
+		query,
 		dto.ShortURL, dto.OriginalURL, dto.UserID,
 	)
 
@@ -98,19 +118,20 @@ func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShor
 		var pgErr *pgconn.PgError
 
 		if errors.As(err, &pgErr) && pgErr.Code == PgUniqueIndexErrorCode {
-			return nil, ErrShortURLConflict
+			return nil, domain.ErrShortURLConflict
 		}
 
 		return nil, err
 	}
 
 	if dto.ShortURL != shortenedURL.ShortURL {
-		return &shortenedURL, ErrRowConflict
+		return &shortenedURL, domain.ErrURLConflict
 	}
 
 	return &shortenedURL, nil
 }
 
+// SaveSeveralURL save several short url to the database.
 func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]models.ShortenedURL, error) {
 	tx, err := storage.pool.Begin(ctx)
 
@@ -122,10 +143,15 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 
 	batch := &pgx.Batch{}
 	originalURLs := make([]string, 0, len(dtos))
+	query := `
+		INSERT INTO shorten_url (short_url, original_url, user_id)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (original_url) DO NOTHING
+	`
 
 	for _, dto := range dtos {
 		batch.Queue(
-			"INSERT INTO shorten_url (short_url, original_url, user_id) VALUES ($1, $2, $3) ON CONFLICT (original_url) DO NOTHING",
+			query,
 			dto.ShortURL, dto.OriginalURL, dto.UserID,
 		)
 		originalURLs = append(originalURLs, dto.OriginalURL)
@@ -137,9 +163,14 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 		return nil, err
 	}
 
+	query = `
+		SELECT id, short_url, user_id, original_url
+		FROM shorten_url
+		WHERE original_url = ANY($1)
+	`
 	rows, err := tx.Query(
 		ctx,
-		"SELECT id, short_url, user_id, original_url FROM shorten_url WHERE original_url = ANY($1)",
+		query,
 		originalURLs,
 	)
 
@@ -170,21 +201,34 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 	return shortenedURLs, nil
 }
 
+// DeleteByShortURLs delete short urls from the database.
 func (storage *DatabaseStorage) DeleteByShortURLs(ctx context.Context, shortURLs []string, userID string) error {
+	query := `
+		UPDATE shorten_url
+		SET is_deleted = TRUE
+	   	WHERE user_id = $1 AND short_url = ANY($2)
+	`
 	_, err := storage.pool.Exec(
 		ctx,
-		"UPDATE shorten_url SET is_deleted = TRUE WHERE user_id = $1 AND short_url = ANY($2)",
+		query,
 		userID, shortURLs,
 	)
 	return err
 }
 
+// DoDeleteURLTasks execute delete tasks and save result to the database.
 func (storage *DatabaseStorage) DoDeleteURLTasks(ctx context.Context, tasks []domain.DeleteURLsTask) error {
 	batch := &pgx.Batch{}
 
+	query := `
+		UPDATE shorten_url
+		SET is_deleted = TRUE
+		WHERE user_id = $1 AND short_url = ANY($2)
+	`
+
 	for _, task := range tasks {
 		batch.Queue(
-			"UPDATE shorten_url SET is_deleted = TRUE WHERE user_id = $1 AND short_url = ANY($2)",
+			query,
 			task.UserID, task.ShortURLs,
 		)
 	}
@@ -193,35 +237,28 @@ func (storage *DatabaseStorage) DoDeleteURLTasks(ctx context.Context, tasks []do
 	return batchResult.Close()
 }
 
+// Ping check if storage is available.
 func (storage *DatabaseStorage) Ping(ctx context.Context) error {
 	return storage.pool.Ping(ctx)
 }
 
-func (storage *DatabaseStorage) bootstrap() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-
-	defer cancel()
-
-	tx, err := storage.pool.Begin(ctx)
-
+func (storage *DatabaseStorage) runMigrations(databaseDNS string) error {
+	db, err := sql.Open("pgx", databaseDNS)
 	if err != nil {
 		return err
 	}
 
-	defer tx.Rollback(ctx)
+	defer db.Close()
 
-	tx.Exec(ctx, `
-		CREATE TABLE IF NOT EXISTS shorten_url (
-	  		id serial PRIMARY KEY,
-	  		short_url VARCHAR ( 20 ) UNIQUE NOT NULL,
-	  		original_url TEXT NOT NULL,
-	  		user_id VARCHAR( 100 ) NOT NULL,
-	  		created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-		   	is_deleted BOOLEAN DEFAULT FALSE
-		)
-	`)
-	tx.Exec(ctx, `CREATE UNIQUE INDEX IF NOT EXISTS short_url_idx ON shorten_url (short_url)`)
-	tx.Exec(ctx, `CREATE UNIQUE INDEX IF NOT EXISTS original_url_idx ON shorten_url (original_url)`)
+	goose.SetBaseFS(embedMigrations)
 
-	return tx.Commit(ctx)
+	if err := goose.SetDialect("postgres"); err != nil {
+		return err
+	}
+
+	if err := goose.Up(db, "migrations"); err != nil {
+		return err
+	}
+
+	return nil
 }

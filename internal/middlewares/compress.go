@@ -8,7 +8,8 @@ import (
 	"strings"
 )
 
-type compressWriter struct {
+// CompressWriter responsible for compressing response of specified content-type.
+type CompressWriter struct {
 	http.ResponseWriter
 
 	contentTypes map[string]struct{}
@@ -16,7 +17,9 @@ type compressWriter struct {
 	w            io.Writer
 }
 
-func (cw *compressWriter) WriteHeader(code int) {
+// WriteHeader if content type is not compressible just writing header.
+// If compressible, then adding Content-Encoding header as addition.
+func (cw *CompressWriter) WriteHeader(code int) {
 	if !cw.isCompressible() {
 		cw.ResponseWriter.WriteHeader(code)
 		return
@@ -26,11 +29,14 @@ func (cw *compressWriter) WriteHeader(code int) {
 	cw.ResponseWriter.WriteHeader(code)
 }
 
-func (cw *compressWriter) Write(b []byte) (int, error) {
+// Write writes bytes to writer. Writer is base http writer if response content-type is not compressible.
+// If compressible, then writer is given io.Writer.
+func (cw *CompressWriter) Write(b []byte) (int, error) {
 	return cw.writer().Write(b)
 }
 
-func (cw *compressWriter) Close() error {
+// Close closes writer.
+func (cw *CompressWriter) Close() error {
 	if c, ok := cw.writer().(io.WriteCloser); ok {
 		return c.Close()
 	}
@@ -38,7 +44,7 @@ func (cw *compressWriter) Close() error {
 	return errors.New("don't have close method")
 }
 
-func (cw *compressWriter) isCompressible() bool {
+func (cw *CompressWriter) isCompressible() bool {
 	contentType := cw.Header().Get("Content-Type")
 
 	// Remove part with text encoding like text/plain;charset=utf-8
@@ -53,7 +59,7 @@ func (cw *compressWriter) isCompressible() bool {
 	return false
 }
 
-func (cw *compressWriter) writer() io.Writer {
+func (cw *CompressWriter) writer() io.Writer {
 	if cw.isCompressible() {
 		return cw.w
 	} else {
@@ -61,8 +67,8 @@ func (cw *compressWriter) writer() io.Writer {
 	}
 }
 
-func newGzipWriter(rw http.ResponseWriter, w io.Writer) *compressWriter {
-	return &compressWriter{
+func newGzipWriter(rw http.ResponseWriter, w io.Writer) *CompressWriter {
+	return &CompressWriter{
 		ResponseWriter: rw,
 		w:              w,
 		encodeFormat:   "gzip",
@@ -78,18 +84,21 @@ type writerResetter interface {
 	Reset(w io.Writer)
 }
 
-type compressMiddleware struct {
+// CompressMiddleware is middleware to compress request and response.
+type CompressMiddleware struct {
 	wr writerResetter
 }
 
-func NewCompressMiddleware(writerResetter writerResetter) *compressMiddleware {
-	compressor := compressMiddleware{}
+// NewCompressMiddleware is contructor function to create CompressMiddleware.
+func NewCompressMiddleware(writerResetter writerResetter) *CompressMiddleware {
+	compressor := CompressMiddleware{}
 	compressor.wr = writerResetter
 
 	return &compressor
 }
 
-func (compressor compressMiddleware) Handler(next http.Handler) http.Handler {
+// Handler need to use as middleware.
+func (compressor CompressMiddleware) Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Encoding") == "gzip" {
 			gr, err := gzip.NewReader(r.Body)
