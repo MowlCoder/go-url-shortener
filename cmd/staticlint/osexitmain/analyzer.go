@@ -6,6 +6,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
+// Analyzer is custom analyzer to use in multichecker. Analyzer checking for os.Exit calls in main function of main package
 var Analyzer = &analysis.Analyzer{
 	Name: "osexitmain",
 	Doc:  "check for os.Exit calls in main function of main package",
