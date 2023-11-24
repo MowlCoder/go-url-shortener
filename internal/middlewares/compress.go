@@ -10,11 +10,10 @@ import (
 
 // CompressWriter responsible for compressing response of specified content-type.
 type CompressWriter struct {
+	w io.Writer
 	http.ResponseWriter
-
 	contentTypes map[string]struct{}
 	encodeFormat string
-	w            io.Writer
 }
 
 // WriteHeader if content type is not compressible just writing header.

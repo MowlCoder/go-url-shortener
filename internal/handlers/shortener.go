@@ -85,7 +85,7 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := json.Unmarshal(rawBody, &requestBody); err != nil {
+	if jsonErr := json.Unmarshal(rawBody, &requestBody); jsonErr != nil {
 		httputil.SendStatusCode(w, http.StatusBadRequest)
 		return
 	}
@@ -144,7 +144,7 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := json.Unmarshal(rawBody, &requestBody); err != nil {
+	if jsonErr := json.Unmarshal(rawBody, &requestBody); jsonErr != nil {
 		httputil.SendStatusCode(w, http.StatusBadRequest)
 		return
 	}
