@@ -21,6 +21,9 @@ func main() {
 		shadow.Analyzer,
 		printf.Analyzer,
 		structtag.Analyzer,
+		fieldalignment.Analyzer,
+		gocritic.Analyzer,
+		bodyclose.Analyzer,
 		osexitmain.Analyzer,
 	}
 
@@ -55,13 +58,6 @@ func main() {
 	for _, check := range staticcheck.Analyzers {
 		analyzers = append(analyzers, check.Analyzer)
 	}
-
-	analyzers = append(
-		analyzers,
-		gocritic.Analyzer,
-		bodyclose.Analyzer,
-		fieldalignment.Analyzer,
-	)
 
 	multichecker.Main(
 		analyzers...,

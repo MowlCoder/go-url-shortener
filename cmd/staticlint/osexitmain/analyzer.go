@@ -2,6 +2,8 @@ package osexitmain
 
 import (
 	"go/ast"
+	"go/token"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 )
@@ -15,7 +17,7 @@ var Analyzer = &analysis.Analyzer{
 
 func run(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
-		if file.Name.Name != "main" {
+		if !validFile(pass.Fset, file) {
 			continue
 		}
 
@@ -48,4 +50,16 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	}
 
 	return nil, nil
+}
+
+func validFile(fileSet *token.FileSet, file *ast.File) bool {
+	if file.Name.Name != "main" {
+		return false
+	}
+
+	if strings.Contains(fileSet.Position(file.Pos()).Filename, "go-build") {
+		return false
+	}
+
+	return true
 }
