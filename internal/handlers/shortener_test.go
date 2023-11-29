@@ -40,13 +40,13 @@ func TestShortURL(t *testing.T) {
 	)
 
 	type TestCase struct {
-		Name               string
-		Body               string
-		NotAuth            bool
 		PrepareServiceFunc func(
 			ctx context.Context,
 			body string,
 		)
+		Name               string
+		Body               string
+		NotAuth            bool
 		ExpectedStatusCode int
 	}
 
@@ -163,13 +163,13 @@ func TestShortURLJSON(t *testing.T) {
 	)
 
 	type TestCase struct {
-		Name               string
-		Body               *dtos.ShortURLDto
-		NotAuth            bool
 		PrepareServiceFunc func(
 			ctx context.Context,
 			body *dtos.ShortURLDto,
 		)
+		Body               *dtos.ShortURLDto
+		Name               string
+		NotAuth            bool
 		ExpectedStatusCode int
 	}
 
@@ -306,13 +306,13 @@ func TestShortBatchURL(t *testing.T) {
 	)
 
 	type TestCase struct {
-		Name               string
-		Body               []dtos.ShortBatchURLDto
-		NotAuth            bool
 		PrepareServiceFunc func(
 			ctx context.Context,
 			body []dtos.ShortBatchURLDto,
 		)
+		Name               string
+		Body               []dtos.ShortBatchURLDto
+		NotAuth            bool
 		ExpectedStatusCode int
 	}
 
@@ -478,11 +478,11 @@ func TestGetMyURLs(t *testing.T) {
 	)
 
 	type TestCase struct {
-		Name               string
-		NotAuth            bool
 		PrepareServiceFunc func(
 			ctx context.Context,
 		)
+		Name               string
+		NotAuth            bool
 		ExpectedStatusCode int
 	}
 
@@ -565,13 +565,13 @@ func TestDeleteURLs(t *testing.T) {
 	)
 
 	type TestCase struct {
-		Name               string
-		NotAuth            bool
-		Body               dtos.DeleteURLsRequest
 		PrepareServiceFunc func(
 			ctx context.Context,
 		)
+		Name               string
+		Body               dtos.DeleteURLsRequest
 		ExpectedStatusCode int
+		NotAuth            bool
 	}
 
 	testCases := []TestCase{
@@ -653,12 +653,12 @@ func TestRedirectToURLByID(t *testing.T) {
 	)
 
 	type TestCase struct {
-		Name               string
-		Body               string
 		PrepareServiceFunc func(
 			ctx context.Context,
 			body string,
 		)
+		Name               string
+		Body               string
 		ExpectedStatusCode int
 	}
 
@@ -735,10 +735,10 @@ func TestPing(t *testing.T) {
 	)
 
 	type TestCase struct {
-		Name               string
 		PrepareServiceFunc func(
 			ctx context.Context,
 		)
+		Name               string
 		ExpectedStatusCode int
 	}
 

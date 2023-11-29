@@ -23,6 +23,12 @@ import (
 	"github.com/MowlCoder/go-url-shortener/internal/storage"
 )
 
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+)
+
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
@@ -72,6 +78,7 @@ func main() {
 
 	go deleteURLQueue.Start(context.Background())
 
+	displayBuildInfo()
 	fmt.Println("URL Shortener server is running on", appConfig.BaseHTTPAddr)
 	fmt.Println("Config:", appConfig)
 
@@ -111,4 +118,24 @@ func makeRouter(
 	mux.Get("/{id}", shortenerHandler.RedirectToURLByID)
 
 	return mux
+}
+
+func displayBuildInfo() {
+	if buildVersion == "" {
+		buildVersion = "N/A"
+	}
+
+	if buildCommit == "" {
+		buildCommit = "N/A"
+	}
+
+	if buildDate == "" {
+		buildDate = "N/A"
+	}
+
+	fmt.Println("========================Build Info========================")
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
+	fmt.Println("==========================================================")
 }

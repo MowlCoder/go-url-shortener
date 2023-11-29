@@ -21,11 +21,12 @@ type URLStorage interface {
 
 // New create URLStorage base on given config.
 func New(appConfig *config.AppConfig) (URLStorage, error) {
-	if appConfig.DatabaseDSN != "" {
+	switch {
+	case appConfig.DatabaseDSN != "":
 		return NewDatabaseStorage(appConfig.DatabaseDSN)
-	} else if appConfig.FileStoragePath != "" {
+	case appConfig.FileStoragePath != "":
 		return NewFileStorage(appConfig.FileStoragePath)
-	} else {
+	default:
 		return NewInMemoryStorage()
 	}
 }

@@ -8,8 +8,7 @@ const (
 	alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 
-// Base62Encode
-// convert number to string in Base62 format
+// Base62Encode convert number to string in Base62 format
 func Base62Encode(number uint64) string {
 	length := len(alphabet)
 	var encodedBuilder strings.Builder

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"embed"
 	"errors"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -159,8 +160,8 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 
 	batchResult := tx.SendBatch(ctx, batch)
 
-	if err := batchResult.Close(); err != nil {
-		return nil, err
+	if batchCloseErr := batchResult.Close(); batchCloseErr != nil {
+		return nil, batchCloseErr
 	}
 
 	query = `
