@@ -82,8 +82,14 @@ func main() {
 	fmt.Println("URL Shortener server is running on", appConfig.BaseHTTPAddr)
 	fmt.Println("Config:", appConfig)
 
-	if err := http.ListenAndServe(appConfig.BaseHTTPAddr, router); err != nil {
-		panic(err)
+	if appConfig.EnableHTTPS {
+		if err := http.ListenAndServeTLS(appConfig.BaseHTTPAddr, appConfig.SSLPemPath, appConfig.SSLKeyPath, router); err != nil {
+			panic(err)
+		}
+	} else {
+		if err := http.ListenAndServe(appConfig.BaseHTTPAddr, router); err != nil {
+			panic(err)
+		}
 	}
 }
 
