@@ -7,6 +7,9 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -76,21 +79,55 @@ func main() {
 		gzipWriter,
 	)
 
-	go deleteURLQueue.Start(context.Background())
+	workersCtx, workersStopCtx := context.WithCancel(context.Background())
+	go deleteURLQueue.Start(workersCtx)
 
 	displayBuildInfo()
-	fmt.Println("URL Shortener server is running on", appConfig.BaseHTTPAddr)
-	fmt.Println("Config:", appConfig)
+	log.Println("URL Shortener server is running on", appConfig.BaseHTTPAddr)
+	log.Println("Config:", appConfig)
 
-	if appConfig.EnableHTTPS {
-		if err := http.ListenAndServeTLS(appConfig.BaseHTTPAddr, appConfig.SSLPemPath, appConfig.SSLKeyPath, router); err != nil {
-			panic(err)
-		}
-	} else {
-		if err := http.ListenAndServe(appConfig.BaseHTTPAddr, router); err != nil {
-			panic(err)
-		}
+	server := http.Server{
+		Addr:    appConfig.BaseHTTPAddr,
+		Handler: router,
 	}
+
+	go func() {
+		var err error
+
+		if appConfig.EnableHTTPS {
+			err = server.ListenAndServeTLS(appConfig.SSLPemPath, appConfig.SSLKeyPath)
+		} else {
+			err = server.ListenAndServe()
+		}
+
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
+	}()
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGINT)
+	<-sigs
+
+	log.Println("start graceful shutdown...")
+
+	shutdownCtx, shutdownCtxCancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer shutdownCtxCancel()
+
+	go func() {
+		<-shutdownCtx.Done()
+		if shutdownCtx.Err() == context.DeadlineExceeded {
+			log.Fatal("graceful shutdown timed out... forcing exit")
+		}
+	}()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Fatal(err)
+	}
+
+	workersStopCtx()
+
+	log.Println("graceful shutdown server successfully")
 }
 
 // @title URL shortener
