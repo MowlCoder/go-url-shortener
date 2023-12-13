@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,6 +35,30 @@ func TestParseToken(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, claims.UserID, userID)
+	})
+
+	t.Run("invalid token", func(t *testing.T) {
+		_, err := ParseToken("invalid token")
+		require.Error(t, err)
+	})
+}
+
+func TestGetJWTSecretKey(t *testing.T) {
+	t.Run("get secret from env (exist in env)", func(t *testing.T) {
+		secret := "super-secret-jwt-secret"
+		err := os.Setenv(envKeyJWTSecret, secret)
+		require.NoError(t, err)
+		secretFromENV := getJWTSecretKey()
+
+		assert.Equal(t, secretFromENV, secret)
+	})
+
+	t.Run("get secret from env (no exist in env)", func(t *testing.T) {
+		err := os.Unsetenv(envKeyJWTSecret)
+		require.NoError(t, err)
+		secretFromENV := getJWTSecretKey()
+
+		assert.Equal(t, secretFromENV, defaultJWTSecret)
 	})
 }
 

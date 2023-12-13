@@ -7,6 +7,11 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
+const (
+	defaultJWTSecret = "secret"
+	envKeyJWTSecret  = "JWT_SECRET"
+)
+
 // Claims is JWT payload.
 type Claims struct {
 	jwt.RegisteredClaims
@@ -50,10 +55,10 @@ func ParseToken(tokenString string) (*Claims, error) {
 }
 
 func getJWTSecretKey() string {
-	key, ok := os.LookupEnv("JWT_SECRET")
+	key, ok := os.LookupEnv(envKeyJWTSecret)
 
 	if !ok {
-		return "secret"
+		return defaultJWTSecret
 	}
 
 	return key

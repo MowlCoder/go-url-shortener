@@ -54,6 +54,92 @@ func TestFileStorage_SaveURL(t *testing.T) {
 	})
 }
 
+func TestFileStorage_GetURLsByUserID(t *testing.T) {
+	type TestCase struct {
+		Name           string
+		UserID         string
+		PrepareStorage func() *FileStorage
+		IsError        bool
+		ExpectedLen    int
+	}
+
+	testCases := []TestCase{
+		{
+			Name:   "Get urls (valid)",
+			UserID: "123",
+			PrepareStorage: func() *FileStorage {
+				storage, _ := NewFileStorage("")
+				storage.structure["1"] = models.ShortenedURL{
+					ID:          1,
+					OriginalURL: "123",
+					UserID:      "123",
+					ShortURL:    "123",
+				}
+
+				return storage
+			},
+			IsError:     false,
+			ExpectedLen: 1,
+		},
+		{
+			Name:   "Get urls (zero)",
+			UserID: "123",
+			PrepareStorage: func() *FileStorage {
+				storage, _ := NewFileStorage("")
+				return storage
+			},
+			IsError:     false,
+			ExpectedLen: 0,
+		},
+	}
+
+	for _, testCase := range testCases {
+		storage := testCase.PrepareStorage()
+		urls, err := storage.GetURLsByUserID(context.Background(), testCase.UserID)
+
+		if testCase.IsError {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+			assert.Len(t, urls, testCase.ExpectedLen)
+		}
+	}
+}
+
+func TestFileStorage_SaveSeveralURL(t *testing.T) {
+	type TestCase struct {
+		Name    string
+		DTOs    []domain.SaveShortURLDto
+		IsError bool
+	}
+
+	testCases := []TestCase{
+		{
+			Name:    "Save URLs",
+			IsError: false,
+			DTOs: []domain.SaveShortURLDto{
+				{
+					OriginalURL: "123",
+					ShortURL:    "123",
+					UserID:      "123",
+				},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		storage, _ := NewFileStorage("")
+		urls, err := storage.SaveSeveralURL(context.Background(), testCase.DTOs)
+
+		if testCase.IsError {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+			assert.Len(t, urls, len(testCase.DTOs))
+		}
+	}
+}
+
 func TestFileStorage_GetOriginalURLByShortURL(t *testing.T) {
 	t.Run("Get url", func(t *testing.T) {
 		testID := "testid"
@@ -87,7 +173,7 @@ func TestFileStorage_DeleteByShortURLs(t *testing.T) {
 		testURL := "https://test.com"
 		userID := "32"
 
-		storage, _ := NewInMemoryStorage()
+		storage, _ := NewFileStorage("")
 		storage.structure[testID] = models.ShortenedURL{
 			ShortURL:    testID,
 			OriginalURL: testURL,
@@ -108,7 +194,7 @@ func TestFileStorage_DeleteByShortURLs(t *testing.T) {
 		testURL := "https://test.com"
 		userID := "32"
 
-		storage, _ := NewInMemoryStorage()
+		storage, _ := NewFileStorage("")
 		storage.structure[testID1] = models.ShortenedURL{
 			ShortURL:    testID1,
 			OriginalURL: testURL,
@@ -144,7 +230,7 @@ func TestFileStorage_DeleteByShortURLs(t *testing.T) {
 		userIDMy := "32"
 		userIDOther := "33"
 
-		storage, _ := NewInMemoryStorage()
+		storage, _ := NewFileStorage("")
 		storage.structure[testID] = models.ShortenedURL{
 			ShortURL:    testID,
 			OriginalURL: testURL,
@@ -156,5 +242,14 @@ func TestFileStorage_DeleteByShortURLs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, storage.structure[testID].IsDeleted, false)
+	})
+}
+
+func TestFileStorage_Ping(t *testing.T) {
+	storage, _ := NewFileStorage("")
+
+	t.Run("valid ping", func(t *testing.T) {
+		err := storage.Ping(context.Background())
+		assert.NoError(t, err)
 	})
 }

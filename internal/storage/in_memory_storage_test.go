@@ -54,6 +54,58 @@ func TestInMemoryStorage_SaveURL(t *testing.T) {
 	})
 }
 
+func TestInMemoryStorage_GetURLsByUserID(t *testing.T) {
+	type TestCase struct {
+		Name           string
+		UserID         string
+		PrepareStorage func() *InMemoryStorage
+		IsError        bool
+		ExpectedLen    int
+	}
+
+	testCases := []TestCase{
+		{
+			Name:   "Get urls (valid)",
+			UserID: "123",
+			PrepareStorage: func() *InMemoryStorage {
+				storage, _ := NewInMemoryStorage()
+				storage.structure["1"] = models.ShortenedURL{
+					ID:          1,
+					OriginalURL: "123",
+					UserID:      "123",
+					ShortURL:    "123",
+				}
+
+				return storage
+			},
+			IsError:     false,
+			ExpectedLen: 1,
+		},
+		{
+			Name:   "Get urls (zero)",
+			UserID: "123",
+			PrepareStorage: func() *InMemoryStorage {
+				storage, _ := NewInMemoryStorage()
+				return storage
+			},
+			IsError:     false,
+			ExpectedLen: 0,
+		},
+	}
+
+	for _, testCase := range testCases {
+		storage := testCase.PrepareStorage()
+		urls, err := storage.GetURLsByUserID(context.Background(), testCase.UserID)
+
+		if testCase.IsError {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+			assert.Len(t, urls, testCase.ExpectedLen)
+		}
+	}
+}
+
 func TestInMemoryStorage_GetOriginalURLByShortURL(t *testing.T) {
 	t.Run("Get url", func(t *testing.T) {
 		testID := "testid"
@@ -79,6 +131,40 @@ func TestInMemoryStorage_GetOriginalURLByShortURL(t *testing.T) {
 
 		assert.Error(t, err)
 	})
+}
+
+func TestInMemoryStorage_SaveSeveralURL(t *testing.T) {
+	type TestCase struct {
+		Name    string
+		DTOs    []domain.SaveShortURLDto
+		IsError bool
+	}
+
+	testCases := []TestCase{
+		{
+			Name:    "Save URLs",
+			IsError: false,
+			DTOs: []domain.SaveShortURLDto{
+				{
+					OriginalURL: "123",
+					ShortURL:    "123",
+					UserID:      "123",
+				},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		storage, _ := NewInMemoryStorage()
+		urls, err := storage.SaveSeveralURL(context.Background(), testCase.DTOs)
+
+		if testCase.IsError {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+			assert.Len(t, urls, len(testCase.DTOs))
+		}
+	}
 }
 
 func TestInMemoryStorage_DeleteByShortURLs(t *testing.T) {
@@ -156,5 +242,14 @@ func TestInMemoryStorage_DeleteByShortURLs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, storage.structure[testID].IsDeleted, false)
+	})
+}
+
+func TestInMemoryStorage_Ping(t *testing.T) {
+	storage, _ := NewInMemoryStorage()
+
+	t.Run("valid ping", func(t *testing.T) {
+		err := storage.Ping(context.Background())
+		assert.NoError(t, err)
 	})
 }
