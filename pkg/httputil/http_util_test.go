@@ -83,6 +83,31 @@ func TestSendJSONResponse(t *testing.T) {
 	})
 }
 
+func TestSendJSONErrorResponse(t *testing.T) {
+	t.Run("Send json error response", func(t *testing.T) {
+		httpError := HTTPError{
+			Error: "error str",
+		}
+
+		jsonData, err := json.Marshal(httpError)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+		err = SendJSONErrorResponse(w, http.StatusConflict, httpError.Error)
+		require.NoError(t, err)
+
+		res := w.Result()
+		require.Equal(t, http.StatusConflict, res.StatusCode)
+		defer res.Body.Close()
+
+		body, err := io.ReadAll(res.Body)
+		require.NoError(t, err)
+
+		assert.Equal(t, "application/json", res.Header.Get("content-type"))
+		assert.JSONEq(t, string(jsonData), string(body))
+	})
+}
+
 func TestSendRedirectResponse(t *testing.T) {
 	t.Run("Send redirect response", func(t *testing.T) {
 		url := "https://practicum.yandex.ru"
