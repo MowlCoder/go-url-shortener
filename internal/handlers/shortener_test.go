@@ -28,9 +28,9 @@ import (
 
 func TestShortURL(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	urlStorage := handlersmock.NewMockURLStorage(ctrl)
-	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
-	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	urlStorage := handlersmock.NewMockurlStorageForHandler(ctrl)
+	stringsGenerator := handlersmock.NewMockstringGeneratorService(ctrl)
+	deleteQueue := handlersmock.NewMockdeleteURLQueue(ctrl)
 
 	handler := NewShortenerHandler(
 		&config.AppConfig{},
@@ -151,9 +151,9 @@ func TestShortURL(t *testing.T) {
 
 func TestShortURLJSON(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	urlStorage := handlersmock.NewMockURLStorage(ctrl)
-	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
-	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	urlStorage := handlersmock.NewMockurlStorageForHandler(ctrl)
+	stringsGenerator := handlersmock.NewMockstringGeneratorService(ctrl)
+	deleteQueue := handlersmock.NewMockdeleteURLQueue(ctrl)
 
 	handler := NewShortenerHandler(
 		&config.AppConfig{},
@@ -294,9 +294,9 @@ func TestShortURLJSON(t *testing.T) {
 
 func TestShortBatchURL(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	urlStorage := handlersmock.NewMockURLStorage(ctrl)
-	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
-	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	urlStorage := handlersmock.NewMockurlStorageForHandler(ctrl)
+	stringsGenerator := handlersmock.NewMockstringGeneratorService(ctrl)
+	deleteQueue := handlersmock.NewMockdeleteURLQueue(ctrl)
 
 	handler := NewShortenerHandler(
 		&config.AppConfig{},
@@ -465,9 +465,9 @@ func TestShortBatchURL(t *testing.T) {
 
 func TestGetMyURLs(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	urlStorage := handlersmock.NewMockURLStorage(ctrl)
-	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
-	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	urlStorage := handlersmock.NewMockurlStorageForHandler(ctrl)
+	stringsGenerator := handlersmock.NewMockstringGeneratorService(ctrl)
+	deleteQueue := handlersmock.NewMockdeleteURLQueue(ctrl)
 	userID := "1"
 
 	handler := NewShortenerHandler(
@@ -552,9 +552,9 @@ func TestGetMyURLs(t *testing.T) {
 
 func TestDeleteURLs(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	urlStorage := handlersmock.NewMockURLStorage(ctrl)
-	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
-	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	urlStorage := handlersmock.NewMockurlStorageForHandler(ctrl)
+	stringsGenerator := handlersmock.NewMockstringGeneratorService(ctrl)
+	deleteQueue := handlersmock.NewMockdeleteURLQueue(ctrl)
 	userID := "1"
 
 	handler := NewShortenerHandler(
@@ -641,9 +641,9 @@ func TestDeleteURLs(t *testing.T) {
 
 func TestRedirectToURLByID(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	urlStorage := handlersmock.NewMockURLStorage(ctrl)
-	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
-	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	urlStorage := handlersmock.NewMockurlStorageForHandler(ctrl)
+	stringsGenerator := handlersmock.NewMockstringGeneratorService(ctrl)
+	deleteQueue := handlersmock.NewMockdeleteURLQueue(ctrl)
 
 	handler := NewShortenerHandler(
 		&config.AppConfig{},
@@ -723,9 +723,9 @@ func TestRedirectToURLByID(t *testing.T) {
 
 func TestPing(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	urlStorage := handlersmock.NewMockURLStorage(ctrl)
-	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
-	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	urlStorage := handlersmock.NewMockurlStorageForHandler(ctrl)
+	stringsGenerator := handlersmock.NewMockstringGeneratorService(ctrl)
+	deleteQueue := handlersmock.NewMockdeleteURLQueue(ctrl)
 
 	handler := NewShortenerHandler(
 		&config.AppConfig{},
