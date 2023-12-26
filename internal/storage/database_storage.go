@@ -238,6 +238,22 @@ func (storage *DatabaseStorage) DoDeleteURLTasks(ctx context.Context, tasks []do
 	return batchResult.Close()
 }
 
+// GetInternalStats get internal stats for metrics.
+func (storage *DatabaseStorage) GetInternalStats(ctx context.Context) (*domain.InternalStats, error) {
+	query := `
+		SELECT COUNT(DISTINCT user_id) AS users_count, COUNT(id) AS urls_count
+		FROM shorten_url
+	`
+
+	stats := domain.InternalStats{}
+	err := storage.pool.QueryRow(ctx, query).Scan(&stats.Users, &stats.URLs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &stats, nil
+}
+
 // Ping check if storage is available.
 func (storage *DatabaseStorage) Ping(ctx context.Context) error {
 	return storage.pool.Ping(ctx)

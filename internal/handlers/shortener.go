@@ -25,6 +25,7 @@ type urlStorageForHandler interface {
 	GetByShortURL(ctx context.Context, shortURL string) (*models.ShortenedURL, error)
 	GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error)
 	DeleteByShortURLs(ctx context.Context, shortURLs []string, userID string) error
+	GetInternalStats(ctx context.Context) (*domain.InternalStats, error)
 	Ping(ctx context.Context) error
 }
 
@@ -340,6 +341,18 @@ func (h *ShortenerHandler) RedirectToURLByID(w http.ResponseWriter, r *http.Requ
 	}
 
 	httputil.SendRedirectResponse(w, originalURL.OriginalURL)
+}
+
+func (h *ShortenerHandler) GetStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.urlStorage.GetInternalStats(r.Context())
+	if err != nil {
+		httputil.SendStatusCode(w, http.StatusInternalServerError)
+	}
+
+	httputil.SendJSONResponse(w, 200, dtos.GetStatsResponse{
+		URLs:  stats.URLs,
+		Users: stats.Users,
+	})
 }
 
 // Ping godoc

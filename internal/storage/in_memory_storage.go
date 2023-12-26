@@ -125,6 +125,21 @@ func (storage *InMemoryStorage) DoDeleteURLTasks(ctx context.Context, tasks []do
 	return nil
 }
 
+// GetInternalStats get internal stats for metrics.
+func (storage *InMemoryStorage) GetInternalStats(ctx context.Context) (*domain.InternalStats, error) {
+	stats := domain.InternalStats{}
+	uniqueUsers := make(map[string]struct{})
+
+	for _, val := range storage.structure {
+		uniqueUsers[val.UserID] = struct{}{}
+	}
+
+	stats.URLs = len(storage.structure)
+	stats.Users = len(uniqueUsers)
+
+	return &stats, nil
+}
+
 // Ping check if storage is available.
 func (storage *InMemoryStorage) Ping(ctx context.Context) error {
 	return nil

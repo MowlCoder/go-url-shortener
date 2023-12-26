@@ -77,6 +77,7 @@ func main() {
 		userService,
 		customLogger,
 		gzipWriter,
+		appConfig,
 	)
 
 	workersCtx, workersStopCtx := context.WithCancel(context.Background())
@@ -139,6 +140,7 @@ func makeRouter(
 	userService *services.UserService,
 	customLogger *logger.Logger,
 	gzipWriter *gzip.Writer,
+	appConfig *config.AppConfig,
 ) http.Handler {
 	mux := chi.NewRouter()
 
@@ -150,6 +152,11 @@ func makeRouter(
 	})
 	mux.Use(func(handler http.Handler) http.Handler {
 		return customMiddlewares.AuthMiddleware(handler, userService)
+	})
+
+	mux.Group(func(privateRouter chi.Router) {
+		privateRouter.Use(customMiddlewares.TrustedSubnetsMiddleware(appConfig.TrustedSubnet))
+		privateRouter.Get("/api/internal/stats", shortenerHandler.GetStats)
 	})
 
 	mux.Post("/api/shorten/batch", shortenerHandler.ShortBatchURL)

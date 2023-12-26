@@ -16,6 +16,7 @@ type URLStorage interface {
 	GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error)
 	DeleteByShortURLs(ctx context.Context, shortURLs []string, userID string) error
 	DoDeleteURLTasks(ctx context.Context, tasks []domain.DeleteURLsTask) error
+	GetInternalStats(ctx context.Context) (*domain.InternalStats, error)
 	Ping(ctx context.Context) error
 }
 

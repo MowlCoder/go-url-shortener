@@ -21,6 +21,7 @@ type AppConfig struct {
 	EnableHTTPS      bool   `env:"ENABLE_HTTPS" json:"enable_https"`
 	SSLKeyPath       string `env:"SSL_KEY_PATH" json:"ssl_key_path"`
 	SSLPemPath       string `env:"SSL_PEM_PATH" json:"ssl_pem_path"`
+	TrustedSubnet    string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
 }
 
 // Available environments.
@@ -40,6 +41,7 @@ func (appConfig *AppConfig) ParseFlags() {
 	flag.BoolVar(&appConfig.EnableHTTPS, "s", false, "Enable HTTPS")
 	flag.StringVar(&appConfig.SSLKeyPath, "sslk", "./certs/server.key", "Path to ssl key file")
 	flag.StringVar(&appConfig.SSLPemPath, "sslp", "./certs/server.pem", "Path to ssl pem file")
+	flag.StringVar(&appConfig.TrustedSubnet, "t", "", "Trusted subnet in CIDR format")
 	flag.Parse()
 
 	if configPathFromEnv, ok := os.LookupEnv("CONFIG"); ok {

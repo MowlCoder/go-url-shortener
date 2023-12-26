@@ -6,3 +6,9 @@ type SaveShortURLDto struct {
 	ShortURL    string `json:"short_url"`
 	UserID      string `json:"user_id"`
 }
+
+// InternalStats contains internal stats about system state
+type InternalStats struct {
+	URLs  int `json:"urls"`
+	Users int `json:"users"`
+}
