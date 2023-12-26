@@ -343,6 +343,12 @@ func (h *ShortenerHandler) RedirectToURLByID(w http.ResponseWriter, r *http.Requ
 	httputil.SendRedirectResponse(w, originalURL.OriginalURL)
 }
 
+// GetStats godoc
+// @Summary Get internal statistics for metrics
+// @Success 200 {object} dtos.GetStatsResponse
+// @Failure 403
+// @Failure 500
+// @Router /api/internal/stats [get]
 func (h *ShortenerHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	stats, err := h.urlStorage.GetInternalStats(r.Context())
 	if err != nil {

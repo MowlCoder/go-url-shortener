@@ -8,6 +8,7 @@ import (
 	"github.com/MowlCoder/go-url-shortener/pkg/httputil"
 )
 
+// TrustedSubnetsMiddleware return middleware that not allow to request handlers from not trusted ip
 func TrustedSubnetsMiddleware(trustedSubnet string) func(next http.Handler) http.Handler {
 	var ipNet *net.IPNet
 	var err error
