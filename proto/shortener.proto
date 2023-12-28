@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package shortener;
+
+option go_package = "github.com/MowlCoder/go-url-shortener/proto";
+
+message ShortURLRequest {
+  string url = 1;
+}
+
+message ShortURLResponse {
+  string result = 1;
+}
+
+message RequestBatchURLDto {
+  string original_url = 1;
+  string correlation_id = 2;
+}
+
+message ResponseBatchURLDto {
+  string short_url = 1;
+  string correlation_id = 2;
+}
+
+message ShortBatchURLRequest {
+  repeated RequestBatchURLDto dtos = 1;
+}
+
+message ShortBatchURLResponse {
+  repeated ResponseBatchURLDto dtos = 1;
+}
+
+message UserShortenedURL {
+  string short_url = 1;
+  string original_url = 2;
+}
+
+message GetMyURLsRequest {}
+
+message GetMyURLsResponse {
+  repeated UserShortenedURL result = 1;
+}
+
+message DeleteURLsRequest {
+  repeated string urls = 1;
+}
+
+message DeleteURLsResponse {}
+
+message GetStatsRequest {}
+
+message GetStatsResponse {
+  int64 urls = 1;
+  int64 users = 2;
+}
+
+message PingRequest {}
+
+message PingResponse {
+  bool ok = 1;
+}
+
+service Shortener {
+  rpc ShortURL(ShortURLRequest) returns (ShortURLResponse);
+  rpc ShortBatchURL(ShortBatchURLRequest) returns (ShortBatchURLResponse);
+  rpc GetMyURLs(GetMyURLsRequest) returns (GetMyURLsResponse);
+  rpc DeleteURLs(DeleteURLsRequest) returns (DeleteURLsResponse);
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+  rpc Ping(PingRequest) returns (PingResponse);
+}

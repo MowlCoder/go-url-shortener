@@ -14,6 +14,7 @@ import (
 // and configurable variables for application.
 type AppConfig struct {
 	BaseHTTPAddr     string `env:"SERVER_ADDRESS" json:"base_http_addr"`
+	BaseGRPCAddr     string `env:"GRPC_SERVER_ADDRESS" json:"base_grpc_addr"`
 	BaseShortURLAddr string `env:"BASE_URL" json:"base_url"`
 	AppEnvironment   string `env:"APP_ENV" json:"app_env"`
 	FileStoragePath  string `env:"FILE_STORAGE_PATH" json:"file_storage_path"`
@@ -35,6 +36,7 @@ func (appConfig *AppConfig) ParseFlags() {
 	var configPath string
 	flag.StringVar(&configPath, "c", "", "Path to config file")
 	flag.StringVar(&appConfig.BaseHTTPAddr, "a", "localhost:8080", "Base http address that server running on")
+	flag.StringVar(&appConfig.BaseGRPCAddr, "ga", ":3200", "Base grpc address that server running on")
 	flag.StringVar(&appConfig.BaseShortURLAddr, "b", "http://localhost:8080", "Base short url address")
 	flag.StringVar(&appConfig.FileStoragePath, "f", "/tmp/short-url-db.json", "Storage file path")
 	flag.StringVar(&appConfig.DatabaseDSN, "d", "", "Database DSN")
