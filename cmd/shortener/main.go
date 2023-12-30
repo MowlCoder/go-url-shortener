@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,15 +16,19 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
+	"google.golang.org/grpc"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/MowlCoder/go-url-shortener/internal/config"
-	"github.com/MowlCoder/go-url-shortener/internal/handlers"
+	grpcHandlers "github.com/MowlCoder/go-url-shortener/internal/handlers/grpc"
+	httpHandlers "github.com/MowlCoder/go-url-shortener/internal/handlers/http"
+	"github.com/MowlCoder/go-url-shortener/internal/interceptors"
 	"github.com/MowlCoder/go-url-shortener/internal/logger"
 	customMiddlewares "github.com/MowlCoder/go-url-shortener/internal/middlewares"
 	"github.com/MowlCoder/go-url-shortener/internal/services"
 	"github.com/MowlCoder/go-url-shortener/internal/storage"
+	"github.com/MowlCoder/go-url-shortener/proto"
 )
 
 var (
@@ -64,19 +69,31 @@ func main() {
 	stringGeneratorService := services.NewStringGenerator()
 	userService := services.NewUserService()
 	deleteURLQueue := services.NewDeleteURLQueue(urlStorage, customLogger, 3)
-
-	shortenerHandler := handlers.NewShortenerHandler(
-		appConfig,
+	shortenerService := services.NewShortenerService(
 		urlStorage,
 		stringGeneratorService,
 		deleteURLQueue,
 	)
 
-	router := makeRouter(
-		shortenerHandler,
+	httpShortenerHandler := httpHandlers.NewShortenerHandler(
+		appConfig,
+		shortenerService,
+	)
+	grpcShortenerHandler := grpcHandlers.NewShortenerHandler(
+		appConfig,
+		shortenerService,
+	)
+
+	httpRouter := makeRouter(
+		httpShortenerHandler,
 		userService,
 		customLogger,
 		gzipWriter,
+		appConfig,
+	)
+	grpcServer := makeGRPCServer(
+		grpcShortenerHandler,
+		userService,
 	)
 
 	workersCtx, workersStopCtx := context.WithCancel(context.Background())
@@ -86,21 +103,33 @@ func main() {
 	log.Println("URL Shortener server is running on", appConfig.BaseHTTPAddr)
 	log.Println("Config:", appConfig)
 
-	server := http.Server{
+	httpServer := http.Server{
 		Addr:    appConfig.BaseHTTPAddr,
-		Handler: router,
+		Handler: httpRouter,
 	}
 
 	go func() {
 		var err error
 
 		if appConfig.EnableHTTPS {
-			err = server.ListenAndServeTLS(appConfig.SSLPemPath, appConfig.SSLKeyPath)
+			err = httpServer.ListenAndServeTLS(appConfig.SSLPemPath, appConfig.SSLKeyPath)
 		} else {
-			err = server.ListenAndServe()
+			err = httpServer.ListenAndServe()
 		}
 
 		if err != nil && err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
+	}()
+
+	go func() {
+		listen, err := net.Listen("tcp", appConfig.BaseGRPCAddr)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Println("gRPC server started on", appConfig.BaseGRPCAddr)
+		if err := grpcServer.Serve(listen); err != nil {
 			log.Fatal(err)
 		}
 	}()
@@ -121,10 +150,11 @@ func main() {
 		}
 	}()
 
-	if err := server.Shutdown(shutdownCtx); err != nil {
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		log.Fatal(err)
 	}
 
+	grpcServer.Stop()
 	workersStopCtx()
 
 	log.Println("graceful shutdown server successfully")
@@ -135,10 +165,11 @@ func main() {
 // @description URL shortener helps to work with long urls, allow to save your long url and give you a small url, that point to your long url
 // @BasePath /
 func makeRouter(
-	shortenerHandler *handlers.ShortenerHandler,
+	shortenerHandler *httpHandlers.ShortenerHandler,
 	userService *services.UserService,
 	customLogger *logger.Logger,
 	gzipWriter *gzip.Writer,
+	appConfig *config.AppConfig,
 ) http.Handler {
 	mux := chi.NewRouter()
 
@@ -152,6 +183,11 @@ func makeRouter(
 		return customMiddlewares.AuthMiddleware(handler, userService)
 	})
 
+	mux.Group(func(privateRouter chi.Router) {
+		privateRouter.Use(customMiddlewares.TrustedSubnetsMiddleware(appConfig.TrustedSubnet))
+		privateRouter.Get("/api/internal/stats", shortenerHandler.GetStats)
+	})
+
 	mux.Post("/api/shorten/batch", shortenerHandler.ShortBatchURL)
 	mux.Post("/api/shorten", shortenerHandler.ShortURLJSON)
 	mux.Post("/", shortenerHandler.ShortURL)
@@ -161,6 +197,18 @@ func makeRouter(
 	mux.Get("/{id}", shortenerHandler.RedirectToURLByID)
 
 	return mux
+}
+
+func makeGRPCServer(
+	shortenerHandler *grpcHandlers.ShortenerHandler,
+	userService *services.UserService,
+) *grpc.Server {
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(interceptors.CreateAuthInterceptor(userService)),
+	)
+	proto.RegisterShortenerServer(grpcServer, shortenerHandler)
+
+	return grpcServer
 }
 
 func displayBuildInfo() {

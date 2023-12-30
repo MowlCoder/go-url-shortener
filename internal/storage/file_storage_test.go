@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/MowlCoder/go-url-shortener/internal/domain"
-	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
 )
 
 func TestFileStorage_SaveURL(t *testing.T) {
@@ -69,7 +68,7 @@ func TestFileStorage_GetURLsByUserID(t *testing.T) {
 			UserID: "123",
 			PrepareStorage: func() *FileStorage {
 				storage, _ := NewFileStorage("")
-				storage.structure["1"] = models.ShortenedURL{
+				storage.structure["1"] = domain.ShortenedURL{
 					ID:          1,
 					OriginalURL: "123",
 					UserID:      "123",
@@ -145,7 +144,7 @@ func TestFileStorage_GetOriginalURLByShortURL(t *testing.T) {
 		testID := "testid"
 		testURL := "https://test.com"
 		storage, _ := NewFileStorage("")
-		storage.structure[testID] = models.ShortenedURL{
+		storage.structure[testID] = domain.ShortenedURL{
 			ShortURL:    testID,
 			OriginalURL: testURL,
 		}
@@ -174,7 +173,7 @@ func TestFileStorage_DeleteByShortURLs(t *testing.T) {
 		userID := "32"
 
 		storage, _ := NewFileStorage("")
-		storage.structure[testID] = models.ShortenedURL{
+		storage.structure[testID] = domain.ShortenedURL{
 			ShortURL:    testID,
 			OriginalURL: testURL,
 			IsDeleted:   false,
@@ -195,21 +194,21 @@ func TestFileStorage_DeleteByShortURLs(t *testing.T) {
 		userID := "32"
 
 		storage, _ := NewFileStorage("")
-		storage.structure[testID1] = models.ShortenedURL{
+		storage.structure[testID1] = domain.ShortenedURL{
 			ShortURL:    testID1,
 			OriginalURL: testURL,
 			IsDeleted:   false,
 			UserID:      userID,
 		}
 
-		storage.structure[testID2] = models.ShortenedURL{
+		storage.structure[testID2] = domain.ShortenedURL{
 			ShortURL:    testID2,
 			OriginalURL: testURL,
 			IsDeleted:   false,
 			UserID:      userID,
 		}
 
-		storage.structure[testID3] = models.ShortenedURL{
+		storage.structure[testID3] = domain.ShortenedURL{
 			ShortURL:    testID3,
 			OriginalURL: testURL,
 			IsDeleted:   false,
@@ -231,7 +230,7 @@ func TestFileStorage_DeleteByShortURLs(t *testing.T) {
 		userIDOther := "33"
 
 		storage, _ := NewFileStorage("")
-		storage.structure[testID] = models.ShortenedURL{
+		storage.structure[testID] = domain.ShortenedURL{
 			ShortURL:    testID,
 			OriginalURL: testURL,
 			IsDeleted:   false,

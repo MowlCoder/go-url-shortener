@@ -9,7 +9,7 @@ commit = $(shell git rev-parse HEAD)
 ifeq ($(OS), Windows_NT)
 	build_date = $(shell date /t)
 else
-	build_date = $(shell date)
+	build_date = $(shell date -I)
 endif
 ldflags = "-X main.buildCommit=$(commit) -X main.buildDate=$(build_date) -X main.buildVersion=$(build_version)"
 

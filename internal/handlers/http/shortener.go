@@ -1,4 +1,4 @@
-package handlers
+package http
 
 import (
 	"context"
@@ -11,51 +11,38 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/MowlCoder/go-url-shortener/internal/handlers/http/dtos"
+
 	"github.com/MowlCoder/go-url-shortener/internal/config"
 	contextUtil "github.com/MowlCoder/go-url-shortener/internal/context"
 	"github.com/MowlCoder/go-url-shortener/internal/domain"
-	"github.com/MowlCoder/go-url-shortener/internal/handlers/dtos"
-	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
 	"github.com/MowlCoder/go-url-shortener/pkg/httputil"
 )
 
-type urlStorageForHandler interface {
-	SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]models.ShortenedURL, error)
-	SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error)
-	GetByShortURL(ctx context.Context, shortURL string) (*models.ShortenedURL, error)
-	GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error)
-	DeleteByShortURLs(ctx context.Context, shortURLs []string, userID string) error
+type shortenerService interface {
+	ShortURL(ctx context.Context, url string, userID string) (*domain.ShortenedURL, error)
+	ShortBatchURL(ctx context.Context, urls []domain.ShortBatchURL, userID string) ([]domain.ShortBatchURL, error)
+	GetUserURLs(ctx context.Context, userID string) ([]domain.ShortenedURL, error)
+	DeleteURLs(ctx context.Context, urls []string, userID string) error
+	GetByShortURL(ctx context.Context, url string) (*domain.ShortenedURL, error)
+	GetInternalStats(ctx context.Context) (*domain.InternalStats, error)
 	Ping(ctx context.Context) error
-}
-
-type stringGeneratorService interface {
-	GenerateRandom() string
-}
-
-type deleteURLQueue interface {
-	Push(task *domain.DeleteURLsTask)
 }
 
 // ShortenerHandler contains handlers that responsible for handling http request and give proper http response.
 type ShortenerHandler struct {
-	config          *config.AppConfig
-	urlStorage      urlStorageForHandler
-	stringGenerator stringGeneratorService
-	deleteURLQueue  deleteURLQueue
+	config  *config.AppConfig
+	service shortenerService
 }
 
 // NewShortenerHandler is contructor function for ShortenerHandler.
 func NewShortenerHandler(
 	config *config.AppConfig,
-	urlStorage urlStorageForHandler,
-	stringGenerator stringGeneratorService,
-	deleteURLQueue deleteURLQueue,
+	service shortenerService,
 ) *ShortenerHandler {
 	return &ShortenerHandler{
-		config:          config,
-		urlStorage:      urlStorage,
-		stringGenerator: stringGenerator,
-		deleteURLQueue:  deleteURLQueue,
+		config:  config,
+		service: service,
 	}
 }
 
@@ -95,12 +82,7 @@ func (h *ShortenerHandler) ShortURLJSON(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	shortURL := h.stringGenerator.GenerateRandom()
-	shortenedURL, err := h.urlStorage.SaveURL(r.Context(), domain.SaveShortURLDto{
-		OriginalURL: requestBody.URL,
-		ShortURL:    shortURL,
-		UserID:      userID,
-	})
+	shortenedURL, err := h.service.ShortURL(r.Context(), requestBody.URL, userID)
 
 	if errors.Is(err, domain.ErrURLConflict) {
 		httputil.SendJSONResponse(w, http.StatusConflict, dtos.ShortURLResponse{
@@ -154,19 +136,16 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	saveDtos := make([]domain.SaveShortURLDto, 0, len(requestBody))
-	correlations := make(map[string]string)
+	urls := make([]domain.ShortBatchURL, 0, len(requestBody))
 
-	for _, dto := range requestBody {
-		saveDtos = append(saveDtos, domain.SaveShortURLDto{
-			OriginalURL: dto.OriginalURL,
-			ShortURL:    h.stringGenerator.GenerateRandom(),
-			UserID:      userID,
+	for _, url := range requestBody {
+		urls = append(urls, domain.ShortBatchURL{
+			OriginalURL:   url.OriginalURL,
+			CorrelationID: url.CorrelationID,
 		})
-		correlations[dto.OriginalURL] = dto.CorrelationID
 	}
 
-	shortenedURLs, err := h.urlStorage.SaveSeveralURL(r.Context(), saveDtos)
+	shortenedURLs, err := h.service.ShortBatchURL(r.Context(), urls, userID)
 
 	if err != nil {
 		log.Println(err)
@@ -177,11 +156,9 @@ func (h *ShortenerHandler) ShortBatchURL(w http.ResponseWriter, r *http.Request)
 	responseBody := make([]dtos.ShortBatchURLResponse, 0, len(shortenedURLs))
 
 	for _, shortenedURL := range shortenedURLs {
-		correlationID := correlations[shortenedURL.OriginalURL]
-
 		responseBody = append(responseBody, dtos.ShortBatchURLResponse{
 			ShortURL:      fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL),
-			CorrelationID: correlationID,
+			CorrelationID: shortenedURL.CorrelationID,
 		})
 	}
 
@@ -218,12 +195,7 @@ func (h *ShortenerHandler) ShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL := h.stringGenerator.GenerateRandom()
-	shortenedURL, err := h.urlStorage.SaveURL(r.Context(), domain.SaveShortURLDto{
-		OriginalURL: string(body),
-		ShortURL:    shortURL,
-		UserID:      userID,
-	})
+	shortenedURL, err := h.service.ShortURL(r.Context(), string(body), userID)
 
 	if errors.Is(err, domain.ErrURLConflict) {
 		httputil.SendTextResponse(w, http.StatusConflict, fmt.Sprintf("%s/%s", h.config.BaseShortURLAddr, shortenedURL.ShortURL))
@@ -253,7 +225,7 @@ func (h *ShortenerHandler) GetMyURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	urls, err := h.urlStorage.GetURLsByUserID(r.Context(), userID)
+	urls, err := h.service.GetUserURLs(r.Context(), userID)
 
 	if err != nil {
 		httputil.SendStatusCode(w, http.StatusInternalServerError)
@@ -310,10 +282,7 @@ func (h *ShortenerHandler) DeleteURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go h.deleteURLQueue.Push(&domain.DeleteURLsTask{
-		ShortURLs: requestBody,
-		UserID:    userID,
-	})
+	h.service.DeleteURLs(r.Context(), requestBody, userID)
 
 	httputil.SendStatusCode(w, http.StatusAccepted)
 }
@@ -327,7 +296,7 @@ func (h *ShortenerHandler) DeleteURLs(w http.ResponseWriter, r *http.Request) {
 // @Router /{id} [get]
 func (h *ShortenerHandler) RedirectToURLByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	originalURL, err := h.urlStorage.GetByShortURL(r.Context(), id)
+	originalURL, err := h.service.GetByShortURL(r.Context(), id)
 
 	if err != nil {
 		httputil.SendStatusCode(w, http.StatusBadRequest)
@@ -342,13 +311,31 @@ func (h *ShortenerHandler) RedirectToURLByID(w http.ResponseWriter, r *http.Requ
 	httputil.SendRedirectResponse(w, originalURL.OriginalURL)
 }
 
+// GetStats godoc
+// @Summary Get internal statistics for metrics
+// @Success 200 {object} dtos.GetStatsResponse
+// @Failure 403
+// @Failure 500
+// @Router /api/internal/stats [get]
+func (h *ShortenerHandler) GetStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.service.GetInternalStats(r.Context())
+	if err != nil {
+		httputil.SendStatusCode(w, http.StatusInternalServerError)
+	}
+
+	httputil.SendJSONResponse(w, 200, dtos.GetStatsResponse{
+		URLs:  stats.URLs,
+		Users: stats.Users,
+	})
+}
+
 // Ping godoc
 // @Summary Checking if server isn't down
 // @Success 200
 // @Failure 500
 // @Router /ping [get]
 func (h *ShortenerHandler) Ping(w http.ResponseWriter, r *http.Request) {
-	if err := h.urlStorage.Ping(r.Context()); err != nil {
+	if err := h.service.Ping(r.Context()); err != nil {
 		httputil.SendStatusCode(w, http.StatusInternalServerError)
 		return
 	}

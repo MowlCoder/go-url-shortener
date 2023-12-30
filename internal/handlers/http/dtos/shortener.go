@@ -30,3 +30,9 @@ type UserURLsResponse struct {
 
 // DeleteURLsRequest request body for deleting urls
 type DeleteURLsRequest []string
+
+// GetStatsResponse response body of getting internal stats
+type GetStatsResponse struct {
+	URLs  int `json:"urls"`
+	Users int `json:"users"`
+}

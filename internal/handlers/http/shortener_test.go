@@ -1,4 +1,4 @@
-package handlers
+package http
 
 import (
 	"bytes"
@@ -14,29 +14,26 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/mock/gomock"
 
+	handlersmock "github.com/MowlCoder/go-url-shortener/internal/handlers/http/mocks"
+
 	"github.com/MowlCoder/go-url-shortener/internal/domain"
-	handlersmock "github.com/MowlCoder/go-url-shortener/internal/handlers/mocks"
-	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/MowlCoder/go-url-shortener/internal/handlers/http/dtos"
+
 	"github.com/MowlCoder/go-url-shortener/internal/config"
 	contextUtil "github.com/MowlCoder/go-url-shortener/internal/context"
-	"github.com/MowlCoder/go-url-shortener/internal/handlers/dtos"
 )
 
 func TestShortURL(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	urlStorage := handlersmock.NewMockURLStorage(ctrl)
-	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
-	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	service := handlersmock.NewMockshortenerService(ctrl)
 
 	handler := NewShortenerHandler(
 		&config.AppConfig{},
-		urlStorage,
-		stringsGenerator,
-		deleteQueue,
+		service,
 	)
 
 	type TestCase struct {
@@ -55,18 +52,10 @@ func TestShortURL(t *testing.T) {
 			Name: "valid",
 			Body: "https://url.com",
 			PrepareServiceFunc: func(ctx context.Context, body string) {
-				stringsGenerator.
+				service.
 					EXPECT().
-					GenerateRandom().
-					Return("1234")
-				urlStorage.
-					EXPECT().
-					SaveURL(ctx, domain.SaveShortURLDto{
-						OriginalURL: body,
-						ShortURL:    "1234",
-						UserID:      "1",
-					}).
-					Return(&models.ShortenedURL{}, nil)
+					ShortURL(ctx, body, "1").
+					Return(&domain.ShortenedURL{}, nil)
 			},
 			ExpectedStatusCode: http.StatusCreated,
 		},
@@ -87,18 +76,10 @@ func TestShortURL(t *testing.T) {
 			Name: "err row conflict",
 			Body: "https://url.com",
 			PrepareServiceFunc: func(ctx context.Context, body string) {
-				stringsGenerator.
+				service.
 					EXPECT().
-					GenerateRandom().
-					Return("1234")
-				urlStorage.
-					EXPECT().
-					SaveURL(ctx, domain.SaveShortURLDto{
-						OriginalURL: body,
-						ShortURL:    "1234",
-						UserID:      "1",
-					}).
-					Return(&models.ShortenedURL{}, domain.ErrURLConflict)
+					ShortURL(ctx, body, "1").
+					Return(&domain.ShortenedURL{}, domain.ErrURLConflict)
 			},
 			ExpectedStatusCode: http.StatusConflict,
 		},
@@ -106,18 +87,10 @@ func TestShortURL(t *testing.T) {
 			Name: "internal server error",
 			Body: "https://url.com",
 			PrepareServiceFunc: func(ctx context.Context, body string) {
-				stringsGenerator.
+				service.
 					EXPECT().
-					GenerateRandom().
-					Return("1234")
-				urlStorage.
-					EXPECT().
-					SaveURL(ctx, domain.SaveShortURLDto{
-						OriginalURL: body,
-						ShortURL:    "1234",
-						UserID:      "1",
-					}).
-					Return(nil, errors.New("undefined behavior"))
+					ShortURL(ctx, body, "1").
+					Return(nil, errors.New("undefined behaviour"))
 			},
 			ExpectedStatusCode: http.StatusInternalServerError,
 		},
@@ -151,15 +124,11 @@ func TestShortURL(t *testing.T) {
 
 func TestShortURLJSON(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	urlStorage := handlersmock.NewMockURLStorage(ctrl)
-	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
-	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	service := handlersmock.NewMockshortenerService(ctrl)
 
 	handler := NewShortenerHandler(
 		&config.AppConfig{},
-		urlStorage,
-		stringsGenerator,
-		deleteQueue,
+		service,
 	)
 
 	type TestCase struct {
@@ -180,18 +149,10 @@ func TestShortURLJSON(t *testing.T) {
 				URL: "https://url.com",
 			},
 			PrepareServiceFunc: func(ctx context.Context, body *dtos.ShortURLDto) {
-				stringsGenerator.
+				service.
 					EXPECT().
-					GenerateRandom().
-					Return("1234")
-				urlStorage.
-					EXPECT().
-					SaveURL(ctx, domain.SaveShortURLDto{
-						OriginalURL: body.URL,
-						ShortURL:    "1234",
-						UserID:      "1",
-					}).
-					Return(&models.ShortenedURL{}, nil)
+					ShortURL(ctx, body.URL, "1").
+					Return(&domain.ShortenedURL{}, nil)
 			},
 			ExpectedStatusCode: http.StatusCreated,
 		},
@@ -220,18 +181,10 @@ func TestShortURLJSON(t *testing.T) {
 				URL: "https://url.com",
 			},
 			PrepareServiceFunc: func(ctx context.Context, body *dtos.ShortURLDto) {
-				stringsGenerator.
+				service.
 					EXPECT().
-					GenerateRandom().
-					Return("1234")
-				urlStorage.
-					EXPECT().
-					SaveURL(ctx, domain.SaveShortURLDto{
-						OriginalURL: body.URL,
-						ShortURL:    "1234",
-						UserID:      "1",
-					}).
-					Return(&models.ShortenedURL{}, domain.ErrURLConflict)
+					ShortURL(ctx, body.URL, "1").
+					Return(&domain.ShortenedURL{}, domain.ErrURLConflict)
 			},
 			ExpectedStatusCode: http.StatusConflict,
 		},
@@ -241,18 +194,10 @@ func TestShortURLJSON(t *testing.T) {
 				URL: "https://url.com",
 			},
 			PrepareServiceFunc: func(ctx context.Context, body *dtos.ShortURLDto) {
-				stringsGenerator.
+				service.
 					EXPECT().
-					GenerateRandom().
-					Return("1234")
-				urlStorage.
-					EXPECT().
-					SaveURL(ctx, domain.SaveShortURLDto{
-						OriginalURL: body.URL,
-						ShortURL:    "1234",
-						UserID:      "1",
-					}).
-					Return(nil, errors.New("undefined behavior"))
+					ShortURL(ctx, body.URL, "1").
+					Return(nil, errors.New("undefined behaviour"))
 			},
 			ExpectedStatusCode: http.StatusInternalServerError,
 		},
@@ -294,15 +239,11 @@ func TestShortURLJSON(t *testing.T) {
 
 func TestShortBatchURL(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	urlStorage := handlersmock.NewMockURLStorage(ctrl)
-	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
-	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	service := handlersmock.NewMockshortenerService(ctrl)
 
 	handler := NewShortenerHandler(
 		&config.AppConfig{},
-		urlStorage,
-		stringsGenerator,
-		deleteQueue,
+		service,
 	)
 
 	type TestCase struct {
@@ -330,23 +271,19 @@ func TestShortBatchURL(t *testing.T) {
 				},
 			},
 			PrepareServiceFunc: func(ctx context.Context, body []dtos.ShortBatchURLDto) {
-				shortenedUrls := make([]models.ShortenedURL, 0)
+				shortenedUrls := make([]domain.ShortBatchURL, 0)
 
 				for _, dto := range body {
-					stringsGenerator.
-						EXPECT().
-						GenerateRandom().
-						Return(dto.CorrelationID + "1234")
-
-					shortenedUrls = append(shortenedUrls, models.ShortenedURL{
-						ShortURL:    dto.CorrelationID + "1234",
-						OriginalURL: dto.OriginalURL,
+					shortenedUrls = append(shortenedUrls, domain.ShortBatchURL{
+						ShortURL:      dto.CorrelationID + "1234",
+						OriginalURL:   dto.OriginalURL,
+						CorrelationID: dto.CorrelationID,
 					})
 				}
 
-				urlStorage.
+				service.
 					EXPECT().
-					SaveSeveralURL(ctx, gomock.Any()).
+					ShortBatchURL(ctx, gomock.Any(), "1").
 					Return(shortenedUrls, nil)
 			},
 			ExpectedStatusCode: http.StatusCreated,
@@ -383,16 +320,9 @@ func TestShortBatchURL(t *testing.T) {
 				},
 			},
 			PrepareServiceFunc: func(ctx context.Context, body []dtos.ShortBatchURLDto) {
-				for _, dto := range body {
-					stringsGenerator.
-						EXPECT().
-						GenerateRandom().
-						Return(dto.CorrelationID + "1234")
-				}
-
-				urlStorage.
+				service.
 					EXPECT().
-					SaveSeveralURL(ctx, gomock.Any()).
+					ShortBatchURL(ctx, gomock.Any(), "1").
 					Return(nil, errors.New("undefined behavior"))
 			},
 			ExpectedStatusCode: http.StatusInternalServerError,
@@ -465,16 +395,12 @@ func TestShortBatchURL(t *testing.T) {
 
 func TestGetMyURLs(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	urlStorage := handlersmock.NewMockURLStorage(ctrl)
-	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
-	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	service := handlersmock.NewMockshortenerService(ctrl)
 	userID := "1"
 
 	handler := NewShortenerHandler(
 		&config.AppConfig{},
-		urlStorage,
-		stringsGenerator,
-		deleteQueue,
+		service,
 	)
 
 	type TestCase struct {
@@ -490,20 +416,20 @@ func TestGetMyURLs(t *testing.T) {
 		{
 			Name: "valid",
 			PrepareServiceFunc: func(ctx context.Context) {
-				urlStorage.
+				service.
 					EXPECT().
-					GetURLsByUserID(ctx, userID).
-					Return([]models.ShortenedURL{{}, {}}, nil)
+					GetUserURLs(ctx, userID).
+					Return([]domain.ShortenedURL{{}, {}}, nil)
 			},
 			ExpectedStatusCode: http.StatusOK,
 		},
 		{
 			Name: "valid (no content)",
 			PrepareServiceFunc: func(ctx context.Context) {
-				urlStorage.
+				service.
 					EXPECT().
-					GetURLsByUserID(ctx, userID).
-					Return([]models.ShortenedURL{}, nil)
+					GetUserURLs(ctx, userID).
+					Return([]domain.ShortenedURL{}, nil)
 			},
 			ExpectedStatusCode: http.StatusNoContent,
 		},
@@ -516,9 +442,9 @@ func TestGetMyURLs(t *testing.T) {
 		{
 			Name: "internal server error",
 			PrepareServiceFunc: func(ctx context.Context) {
-				urlStorage.
+				service.
 					EXPECT().
-					GetURLsByUserID(ctx, userID).
+					GetUserURLs(ctx, userID).
 					Return(nil, errors.New("undefined behavior"))
 			},
 			ExpectedStatusCode: http.StatusInternalServerError,
@@ -552,16 +478,12 @@ func TestGetMyURLs(t *testing.T) {
 
 func TestDeleteURLs(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	urlStorage := handlersmock.NewMockURLStorage(ctrl)
-	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
-	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	service := handlersmock.NewMockshortenerService(ctrl)
 	userID := "1"
 
 	handler := NewShortenerHandler(
 		&config.AppConfig{},
-		urlStorage,
-		stringsGenerator,
-		deleteQueue,
+		service,
 	)
 
 	type TestCase struct {
@@ -579,9 +501,9 @@ func TestDeleteURLs(t *testing.T) {
 			Name: "valid",
 			Body: dtos.DeleteURLsRequest{"123", "1234"},
 			PrepareServiceFunc: func(ctx context.Context) {
-				deleteQueue.
+				service.
 					EXPECT().
-					Push(gomock.Any()).AnyTimes()
+					DeleteURLs(ctx, gomock.Any(), "1")
 			},
 			ExpectedStatusCode: http.StatusAccepted,
 		},
@@ -641,15 +563,11 @@ func TestDeleteURLs(t *testing.T) {
 
 func TestRedirectToURLByID(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	urlStorage := handlersmock.NewMockURLStorage(ctrl)
-	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
-	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	service := handlersmock.NewMockshortenerService(ctrl)
 
 	handler := NewShortenerHandler(
 		&config.AppConfig{},
-		urlStorage,
-		stringsGenerator,
-		deleteQueue,
+		service,
 	)
 
 	type TestCase struct {
@@ -667,10 +585,10 @@ func TestRedirectToURLByID(t *testing.T) {
 			Name: "valid",
 			Body: "1234",
 			PrepareServiceFunc: func(ctx context.Context, body string) {
-				urlStorage.
+				service.
 					EXPECT().
 					GetByShortURL(ctx, body).
-					Return(&models.ShortenedURL{}, nil)
+					Return(&domain.ShortenedURL{}, nil)
 			},
 			ExpectedStatusCode: http.StatusTemporaryRedirect,
 		},
@@ -678,7 +596,7 @@ func TestRedirectToURLByID(t *testing.T) {
 			Name: "invalid",
 			Body: "1234",
 			PrepareServiceFunc: func(ctx context.Context, body string) {
-				urlStorage.
+				service.
 					EXPECT().
 					GetByShortURL(ctx, body).
 					Return(nil, errors.New("undefined behavior"))
@@ -689,10 +607,10 @@ func TestRedirectToURLByID(t *testing.T) {
 			Name: "delete url",
 			Body: "1234",
 			PrepareServiceFunc: func(ctx context.Context, body string) {
-				urlStorage.
+				service.
 					EXPECT().
 					GetByShortURL(ctx, body).
-					Return(&models.ShortenedURL{IsDeleted: true}, nil)
+					Return(&domain.ShortenedURL{IsDeleted: true}, nil)
 			},
 			ExpectedStatusCode: http.StatusGone,
 		},
@@ -723,15 +641,11 @@ func TestRedirectToURLByID(t *testing.T) {
 
 func TestPing(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	urlStorage := handlersmock.NewMockURLStorage(ctrl)
-	stringsGenerator := handlersmock.NewMockStringGeneratorService(ctrl)
-	deleteQueue := handlersmock.NewMockDeleteURLQueue(ctrl)
+	service := handlersmock.NewMockshortenerService(ctrl)
 
 	handler := NewShortenerHandler(
 		&config.AppConfig{},
-		urlStorage,
-		stringsGenerator,
-		deleteQueue,
+		service,
 	)
 
 	type TestCase struct {
@@ -746,7 +660,7 @@ func TestPing(t *testing.T) {
 		{
 			Name: "valid",
 			PrepareServiceFunc: func(ctx context.Context) {
-				urlStorage.
+				service.
 					EXPECT().
 					Ping(ctx).
 					Return(nil)
@@ -756,7 +670,7 @@ func TestPing(t *testing.T) {
 		{
 			Name: "not valid",
 			PrepareServiceFunc: func(ctx context.Context) {
-				urlStorage.
+				service.
 					EXPECT().
 					Ping(ctx).
 					Return(errors.New("undefined behavior"))

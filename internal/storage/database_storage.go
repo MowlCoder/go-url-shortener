@@ -12,7 +12,6 @@ import (
 	"github.com/pressly/goose/v3"
 
 	"github.com/MowlCoder/go-url-shortener/internal/domain"
-	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
 )
 
 //go:embed migrations/*.sql
@@ -47,7 +46,7 @@ func NewDatabaseStorage(databaseDNS string) (*DatabaseStorage, error) {
 }
 
 // GetByShortURL return model where short url equal given short url.
-func (storage *DatabaseStorage) GetByShortURL(ctx context.Context, shortURL string) (*models.ShortenedURL, error) {
+func (storage *DatabaseStorage) GetByShortURL(ctx context.Context, shortURL string) (*domain.ShortenedURL, error) {
 	query := `
 		SELECT id, short_url, original_url, is_deleted
 		FROM shorten_url
@@ -59,7 +58,7 @@ func (storage *DatabaseStorage) GetByShortURL(ctx context.Context, shortURL stri
 		return nil, domain.ErrURLNotFound
 	}
 
-	shortenedURL := models.ShortenedURL{}
+	shortenedURL := domain.ShortenedURL{}
 
 	if err := row.Scan(&shortenedURL.ID, &shortenedURL.ShortURL, &shortenedURL.OriginalURL, &shortenedURL.IsDeleted); err != nil {
 		return nil, err
@@ -69,8 +68,8 @@ func (storage *DatabaseStorage) GetByShortURL(ctx context.Context, shortURL stri
 }
 
 // GetURLsByUserID return list of models where user id equal given user id.
-func (storage *DatabaseStorage) GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error) {
-	urls := make([]models.ShortenedURL, 0)
+func (storage *DatabaseStorage) GetURLsByUserID(ctx context.Context, userID string) ([]domain.ShortenedURL, error) {
+	urls := make([]domain.ShortenedURL, 0)
 	query := `
 		SELECT id, short_url, user_id, original_url
 		FROM shorten_url
@@ -88,7 +87,7 @@ func (storage *DatabaseStorage) GetURLsByUserID(ctx context.Context, userID stri
 	}
 
 	for rows.Next() {
-		shortenedURL := models.ShortenedURL{}
+		shortenedURL := domain.ShortenedURL{}
 
 		if err := rows.Scan(&shortenedURL.ID, &shortenedURL.ShortURL, &shortenedURL.UserID, &shortenedURL.OriginalURL); err != nil {
 			return nil, err
@@ -101,7 +100,7 @@ func (storage *DatabaseStorage) GetURLsByUserID(ctx context.Context, userID stri
 }
 
 // SaveURL save short url to the database.
-func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error) {
+func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*domain.ShortenedURL, error) {
 	query := `
 		INSERT INTO shorten_url (short_url, original_url, user_id) VALUES ($1, $2, $3)
 		ON CONFLICT (original_url) DO UPDATE SET original_url = EXCLUDED.original_url
@@ -113,7 +112,7 @@ func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShor
 		dto.ShortURL, dto.OriginalURL, dto.UserID,
 	)
 
-	shortenedURL := models.ShortenedURL{}
+	shortenedURL := domain.ShortenedURL{}
 
 	if err := row.Scan(&shortenedURL.ID, &shortenedURL.ShortURL, &shortenedURL.UserID, &shortenedURL.OriginalURL); err != nil {
 		var pgErr *pgconn.PgError
@@ -133,7 +132,7 @@ func (storage *DatabaseStorage) SaveURL(ctx context.Context, dto domain.SaveShor
 }
 
 // SaveSeveralURL save several short url to the database.
-func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]models.ShortenedURL, error) {
+func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]domain.ShortenedURL, error) {
 	tx, err := storage.pool.Begin(ctx)
 
 	if err != nil {
@@ -183,10 +182,10 @@ func (storage *DatabaseStorage) SaveSeveralURL(ctx context.Context, dtos []domai
 		return nil, rows.Err()
 	}
 
-	shortenedURLs := make([]models.ShortenedURL, 0, len(dtos))
+	shortenedURLs := make([]domain.ShortenedURL, 0, len(dtos))
 
 	for rows.Next() {
-		shortenedURL := models.ShortenedURL{}
+		shortenedURL := domain.ShortenedURL{}
 
 		if err := rows.Scan(&shortenedURL.ID, &shortenedURL.ShortURL, &shortenedURL.UserID, &shortenedURL.OriginalURL); err != nil {
 			return nil, err
@@ -236,6 +235,22 @@ func (storage *DatabaseStorage) DoDeleteURLTasks(ctx context.Context, tasks []do
 
 	batchResult := storage.pool.SendBatch(ctx, batch)
 	return batchResult.Close()
+}
+
+// GetInternalStats get internal stats for metrics.
+func (storage *DatabaseStorage) GetInternalStats(ctx context.Context) (*domain.InternalStats, error) {
+	query := `
+		SELECT COUNT(DISTINCT user_id) AS users_count, COUNT(id) AS urls_count
+		FROM shorten_url
+	`
+
+	stats := domain.InternalStats{}
+	err := storage.pool.QueryRow(ctx, query).Scan(&stats.Users, &stats.URLs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &stats, nil
 }
 
 // Ping check if storage is available.

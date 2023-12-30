@@ -5,25 +5,24 @@ import (
 	"errors"
 
 	"github.com/MowlCoder/go-url-shortener/internal/domain"
-	"github.com/MowlCoder/go-url-shortener/internal/storage/models"
 )
 
 // InMemoryStorage is storage that store all information in memory.
 type InMemoryStorage struct {
-	structure map[string]models.ShortenedURL
+	structure map[string]domain.ShortenedURL
 }
 
 // NewInMemoryStorage create in memory storage.
 func NewInMemoryStorage() (*InMemoryStorage, error) {
 	storage := InMemoryStorage{
-		structure: make(map[string]models.ShortenedURL),
+		structure: make(map[string]domain.ShortenedURL),
 	}
 
 	return &storage, nil
 }
 
 // GetByShortURL return model where short url equal given short url.
-func (storage *InMemoryStorage) GetByShortURL(ctx context.Context, shortURL string) (*models.ShortenedURL, error) {
+func (storage *InMemoryStorage) GetByShortURL(ctx context.Context, shortURL string) (*domain.ShortenedURL, error) {
 	if url, ok := storage.structure[shortURL]; ok {
 		return &url, nil
 	}
@@ -32,8 +31,8 @@ func (storage *InMemoryStorage) GetByShortURL(ctx context.Context, shortURL stri
 }
 
 // GetURLsByUserID return list of models where user id equal given user id.
-func (storage *InMemoryStorage) GetURLsByUserID(ctx context.Context, userID string) ([]models.ShortenedURL, error) {
-	urls := make([]models.ShortenedURL, 0)
+func (storage *InMemoryStorage) GetURLsByUserID(ctx context.Context, userID string) ([]domain.ShortenedURL, error) {
+	urls := make([]domain.ShortenedURL, 0)
 
 	for _, value := range storage.structure {
 		if value.UserID == userID {
@@ -45,25 +44,25 @@ func (storage *InMemoryStorage) GetURLsByUserID(ctx context.Context, userID stri
 }
 
 // FindByOriginalURL return model where original url equal given original url.
-func (storage *InMemoryStorage) FindByOriginalURL(ctx context.Context, originalURL string) (models.ShortenedURL, error) {
+func (storage *InMemoryStorage) FindByOriginalURL(ctx context.Context, originalURL string) (domain.ShortenedURL, error) {
 	for _, value := range storage.structure {
 		if value.OriginalURL == originalURL {
 			return value, nil
 		}
 	}
 
-	return models.ShortenedURL{}, domain.ErrURLNotFound
+	return domain.ShortenedURL{}, domain.ErrURLNotFound
 }
 
 // SaveURL save short url to the memory.
-func (storage *InMemoryStorage) SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*models.ShortenedURL, error) {
+func (storage *InMemoryStorage) SaveURL(ctx context.Context, dto domain.SaveShortURLDto) (*domain.ShortenedURL, error) {
 	shortenedURL, err := storage.FindByOriginalURL(ctx, dto.OriginalURL)
 
 	if err == nil {
 		return &shortenedURL, domain.ErrURLConflict
 	}
 
-	storage.structure[dto.ShortURL] = models.ShortenedURL{
+	storage.structure[dto.ShortURL] = domain.ShortenedURL{
 		ID:          len(storage.structure) + 1,
 		ShortURL:    dto.ShortURL,
 		OriginalURL: dto.OriginalURL,
@@ -75,8 +74,8 @@ func (storage *InMemoryStorage) SaveURL(ctx context.Context, dto domain.SaveShor
 }
 
 // SaveSeveralURL save several short url to the memory.
-func (storage *InMemoryStorage) SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]models.ShortenedURL, error) {
-	shortenedURLs := make([]models.ShortenedURL, 0, len(dtos))
+func (storage *InMemoryStorage) SaveSeveralURL(ctx context.Context, dtos []domain.SaveShortURLDto) ([]domain.ShortenedURL, error) {
+	shortenedURLs := make([]domain.ShortenedURL, 0, len(dtos))
 
 	for _, dto := range dtos {
 		shortenedURL, err := storage.SaveURL(ctx, dto)
@@ -123,6 +122,21 @@ func (storage *InMemoryStorage) DoDeleteURLTasks(ctx context.Context, tasks []do
 	}
 
 	return nil
+}
+
+// GetInternalStats get internal stats for metrics.
+func (storage *InMemoryStorage) GetInternalStats(ctx context.Context) (*domain.InternalStats, error) {
+	stats := domain.InternalStats{}
+	uniqueUsers := make(map[string]struct{})
+
+	for _, val := range storage.structure {
+		uniqueUsers[val.UserID] = struct{}{}
+	}
+
+	stats.URLs = len(storage.structure)
+	stats.Users = len(uniqueUsers)
+
+	return &stats, nil
 }
 
 // Ping check if storage is available.

@@ -1,4 +1,4 @@
-package handlers_test
+package http_test
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/MowlCoder/go-url-shortener/internal/config"
-	"github.com/MowlCoder/go-url-shortener/internal/handlers"
+	httpHandlers "github.com/MowlCoder/go-url-shortener/internal/handlers/http"
 	"github.com/MowlCoder/go-url-shortener/internal/logger"
 	"github.com/MowlCoder/go-url-shortener/internal/services"
 	"github.com/MowlCoder/go-url-shortener/internal/storage"
@@ -28,13 +28,16 @@ func Example() {
 		IsProduction: appConfig.AppEnvironment == config.AppProductionEnv,
 	})
 	queue := services.NewDeleteURLQueue(urlStorage, customLogger, 3)
-
-	// Create handler
-	handler := handlers.NewShortenerHandler(
-		appConfig,
+	shortenerService := services.NewShortenerService(
 		urlStorage,
 		strGeneratorService,
 		queue,
+	)
+
+	// Create handler
+	handler := httpHandlers.NewShortenerHandler(
+		appConfig,
+		shortenerService,
 	)
 
 	// Short url
