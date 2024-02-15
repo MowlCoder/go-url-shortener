@@ -1,32 +1,33 @@
-# go-musthave-shortener-tpl
+# ✂️ URL Shortener
 
-Шаблон репозитория для трека «Сервис сокращения URL».
+## 💡 Overview
+It is server api project that allows you to short urls, to get your shortened urls and to redirect from short url to original url.
 
-## Начало работы
+## 💻 Technologies
 
-1. Склонируйте репозиторий в любую подходящую директорию на вашем компьютере.
-2. В корне репозитория выполните команду `go mod init <name>` (где `<name>` — адрес вашего репозитория на GitHub без префикса `https://`) для создания модуля.
+- **Language:** Go
+- **Database:** Postgres
+- **Documentation:** godoc, Swagger 2.0
+- **Protocols:** HTTP, gRPC
 
-## Обновление шаблона
+## ▶️ Getting started
 
-Чтобы иметь возможность получать обновления автотестов и других частей шаблона, выполните команду:
+To get started with this app, follow these steps:
 
+1. **Clone the Repository:**
+```shell
+git clone https://github.com/MowlCoder/go-url-shortener.git
 ```
-git remote add -m main template https://github.com/Yandex-Practicum/go-musthave-shortener-tpl.git
+2. **Install Dependencies:**
+```shell
+go get .
+```
+3. **Configure Settings:** Create an `.env` file and populate them based on the `.env.example` file
+4. **Run application:**
+```shell
+make server
 ```
 
-Для обновления кода автотестов выполните команду:
+## 📝 Documentation
 
-```
-git fetch template && git checkout template/main .github
-```
-
-Затем добавьте полученные изменения в свой репозиторий.
-
-## Запуск автотестов
-
-Для успешного запуска автотестов называйте ветки `iter<number>`, где `<number>` — порядковый номер инкремента. Например, в ветке с названием `iter4` запустятся автотесты для инкрементов с первого по четвёртый.
-
-При мёрже ветки с инкрементом в основную ветку `main` будут запускаться все автотесты.
-
-Подробнее про локальный и автоматический запуск читайте в [README автотестов](https://github.com/Yandex-Practicum/go-autotests).
+API documentation is available in the [docs](/docs) directory.
